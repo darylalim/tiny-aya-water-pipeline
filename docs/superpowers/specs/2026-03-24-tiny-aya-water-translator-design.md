@@ -4,15 +4,17 @@
 
 A single-page Streamlit application that provides translation between 40+ European and Asia-Pacific languages using the CohereLabs/tiny-aya-water model via local HuggingFace Transformers inference. Supports both single text translation and batch file translation (CSV/TXT) with download.
 
+**Note:** The tiny-aya-water model is licensed CC-BY-NC (non-commercial). A license notice is displayed in the app sidebar.
+
 ## Architecture
 
 Single-file Streamlit app (`streamlit_app.py`) with three logical sections:
 
-1. **Model loading** — load `CohereLabs/tiny-aya-water` tokenizer + model once via `@st.cache_resource`, BF16 precision
+1. **Model loading** — load `CohereLabs/tiny-aya-water` tokenizer + model once via `@st.cache_resource`, BF16 precision on GPU or FP32 fallback on CPU. Device defaults to `cpu`, configurable via `.env`. Model load wrapped in try/except with `st.error()` on failure and `st.spinner()` during download.
 2. **Translation function** — takes source text, source language, target language; constructs a chat-template prompt; runs `model.generate()` and decodes the output
 3. **UI layer** — language selectors, text input, file upload, translate button, results display, download
 
-Config (model ID, default generation params) loaded from `.env` via `python-dotenv`.
+Config (model ID, default generation params, device) loaded from `.env` via `python-dotenv`.
 
 ## UI Layout
 
@@ -37,15 +39,13 @@ Top-down single-page flow:
 
 ### Prompt Construction
 
+Uses a single user message combining the instruction and the text. The model's chat template may not support a system role, so we avoid it.
+
 ```python
 messages = [
     {
-        "role": "system",
-        "content": "You are a translator. Translate the user's text from {source_language} to {target_language}. Output only the translation, nothing else."
-    },
-    {
         "role": "user",
-        "content": "{text_to_translate}"
+        "content": "Translate the following text from {source_language} to {target_language}. Output only the translation, nothing else.\n\n{text_to_translate}"
     }
 ]
 ```
@@ -59,18 +59,25 @@ Applied via `tokenizer.apply_chat_template()`, then `model.generate()`.
 - `do_sample`: True
 - `top_p`: 0.95
 
+### Validation
+
+- If source and target language are the same, show `st.warning()` and do not translate
+- If text input is empty, show `st.warning()` and do not translate
+
 ### Single Text Flow
 
-1. Build messages, tokenize with chat template, generate, decode
-2. Strip prompt/template artifacts from the output
+1. Build messages, tokenize with chat template, generate, decode with `skip_special_tokens=True`
+2. Strip any remaining whitespace from the output
 
 ### Batch Flow
 
-1. Read uploaded file — CSV via `pd.read_csv()`, TXT as one line per entry
-2. For each row, run the same translation function
-3. Show `st.progress()` bar during batch processing
-4. Collect results into a DataFrame with columns: `original`, `translated`
-5. Display with `st.dataframe()`, offer `st.download_button()` for CSV export
+1. Read uploaded file — CSV via `pd.read_csv(encoding="utf-8", encoding_errors="replace")`, TXT as one line per entry (UTF-8 with replacement for invalid bytes)
+2. Maximum 100 rows per batch. If file exceeds this, show `st.warning()` and truncate
+3. Skip empty rows
+4. For each row, run the same translation function
+5. Show `st.progress()` bar during batch processing
+6. Collect results into a DataFrame with columns: `original`, `translated`
+7. Display with `st.dataframe()`, offer `st.download_button()` for CSV export
 
 ### No Streaming
 
@@ -78,11 +85,11 @@ Applied via `tokenizer.apply_chat_template()`, then `model.generate()`.
 
 ## Supported Languages
 
-Full list of Tiny Aya Water's supported languages (European + Asia-Pacific):
+The Water variant is optimized for European and Asia-Pacific languages, but the underlying model supports all 70+ Tiny Aya languages. The app exposes the Water-optimized subset since those will produce the best results with this variant. Users needing other languages should use the Global, Fire, or Earth variants.
 
-**European:** English, Dutch, French, Italian, Portuguese, Romanian, Spanish, Czech, Polish, Ukrainian, Russian, Greek, German, Danish, Swedish, Norwegian, Catalan, Galician, Welsh, Irish, Basque, Croatian, Latvian, Lithuanian, Slovak, Slovenian, Estonian, Finnish, Hungarian, Serbian, Bulgarian
+**European (31):** English, Dutch, French, Italian, Portuguese, Romanian, Spanish, Czech, Polish, Ukrainian, Russian, Greek, German, Danish, Swedish, Norwegian, Catalan, Galician, Welsh, Irish, Basque, Croatian, Latvian, Lithuanian, Slovak, Slovenian, Estonian, Finnish, Hungarian, Serbian, Bulgarian
 
-**Asia-Pacific:** Chinese, Japanese, Korean, Tagalog, Malay, Indonesian, Javanese, Khmer, Thai, Lao, Vietnamese, Burmese
+**Asia-Pacific (12):** Chinese, Japanese, Korean, Tagalog, Malay, Indonesian, Javanese, Khmer, Thai, Lao, Vietnamese, Burmese
 
 ## File Structure
 
@@ -98,6 +105,7 @@ Full list of Tiny Aya Water's supported languages (European + Asia-Pacific):
 - `streamlit` — UI framework
 - `transformers` — model loading and inference
 - `torch` — PyTorch backend
+- `accelerate` — required for `device_map` and efficient model loading
 - `pandas` — CSV handling for batch mode
 - `python-dotenv` — env config loading
 - Dev: `ruff`, `ty`, `pytest`
@@ -108,6 +116,9 @@ Full list of Tiny Aya Water's supported languages (European + Asia-Pacific):
 MODEL_ID=CohereLabs/tiny-aya-water
 DEFAULT_TEMPERATURE=0.1
 DEFAULT_MAX_TOKENS=700
+DEVICE=cpu
+TOP_P=0.95
+MAX_BATCH_ROWS=100
 ```
 
 ## Testable Functions
@@ -115,6 +126,6 @@ DEFAULT_MAX_TOKENS=700
 Functions extracted from the Streamlit UI for independent testing:
 
 - `build_translation_prompt(text, source_lang, target_lang)` — returns the messages list
-- `extract_translation(decoded_text)` — strips prompt/template artifacts from model output
+- `extract_translation(decoded_text)` — trims whitespace from decoded output (decoding uses `skip_special_tokens=True`, so this is mainly cleanup)
 - `parse_uploaded_file(file, column)` — returns a list of strings from CSV or TXT
 - `translate_text(text, source_lang, target_lang, model, tokenizer, temperature, max_tokens)` — end-to-end translation
