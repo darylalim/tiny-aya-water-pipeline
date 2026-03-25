@@ -1,6 +1,15 @@
 from io import BytesIO
+from unittest.mock import MagicMock
 
-from streamlit_app import LANGUAGES, build_translation_prompt
+import torch
+
+from streamlit_app import (
+    LANGUAGES,
+    build_translation_prompt,
+    extract_translation,
+    parse_uploaded_file,
+    translate_text,
+)
 
 
 def test_languages_list_has_43_entries() -> None:
@@ -41,9 +50,6 @@ def test_build_translation_prompt_instruction() -> None:
     assert "Output only the translation" in content
 
 
-from streamlit_app import extract_translation
-
-
 def test_extract_translation_strips_whitespace() -> None:
     assert extract_translation("  Hello world  ") == "Hello world"
 
@@ -58,9 +64,6 @@ def test_extract_translation_newlines() -> None:
 
 def test_extract_translation_preserves_inner_whitespace() -> None:
     assert extract_translation("  Hello   world  ") == "Hello   world"
-
-
-from streamlit_app import parse_uploaded_file
 
 
 def test_parse_uploaded_file_csv_default_column() -> None:
@@ -103,13 +106,6 @@ def test_parse_uploaded_file_csv_missing_column() -> None:
     file.name = "test.csv"
     result = parse_uploaded_file(file, column="nonexistent")
     assert result == []
-
-
-from unittest.mock import MagicMock
-
-import torch
-
-from streamlit_app import translate_text
 
 
 def test_translate_text_returns_string() -> None:

@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from io import BytesIO
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 from dotenv import load_dotenv
@@ -99,8 +100,8 @@ def translate_text(
     text: str,
     source_lang: str,
     target_lang: str,
-    model: object,
-    tokenizer: object,
+    model: Any,
+    tokenizer: Any,
     temperature: float = DEFAULT_TEMPERATURE,
     max_tokens: int = DEFAULT_MAX_TOKENS,
 ) -> str:
@@ -120,7 +121,7 @@ def translate_text(
         top_p=TOP_P,
     )
     # Decode only the newly generated tokens (skip the input prompt)
-    output_tokens = gen_tokens[0][input_ids.shape[-1]:]
+    output_tokens = gen_tokens[0][input_ids.shape[-1] :]
     decoded = tokenizer.decode(output_tokens, skip_special_tokens=True)
     return extract_translation(decoded)
 
@@ -152,7 +153,7 @@ def parse_uploaded_file(
     return texts[:max_rows]
 
 
-import streamlit as st
+import streamlit as st  # noqa: E402
 
 
 @st.cache_resource
@@ -206,9 +207,13 @@ st.markdown(
 # Language selectors
 col1, col2 = st.columns(2)
 with col1:
-    source_lang = st.selectbox("Source Language", LANGUAGES, index=LANGUAGES.index("English"))
+    source_lang = st.selectbox(
+        "Source Language", LANGUAGES, index=LANGUAGES.index("English")
+    )
 with col2:
-    target_lang = st.selectbox("Target Language", LANGUAGES, index=LANGUAGES.index("French"))
+    target_lang = st.selectbox(
+        "Target Language", LANGUAGES, index=LANGUAGES.index("French")
+    )
 
 # Single text translation
 input_text = st.text_area("Text to translate", height=150)
@@ -221,7 +226,13 @@ if st.button("Translate", disabled=not model_loaded):
     else:
         with st.spinner("Translating..."):
             result = translate_text(
-                input_text, source_lang, target_lang, model, tokenizer, temperature, max_tokens
+                input_text,
+                source_lang,
+                target_lang,
+                model,
+                tokenizer,
+                temperature,
+                max_tokens,
             )
         st.text_area("Translation", value=result, height=150, disabled=True)
 
@@ -236,7 +247,9 @@ if uploaded_file is not None:
     # Column selector for CSV
     column: str | None = None
     if uploaded_file.name.endswith(".csv"):
-        preview_df = pd.read_csv(uploaded_file, encoding="utf-8", encoding_errors="replace")
+        preview_df = pd.read_csv(
+            uploaded_file, encoding="utf-8", encoding_errors="replace"
+        )
         uploaded_file.seek(0)  # Reset for re-read
         column = st.selectbox("Column to translate", preview_df.columns.tolist())
 
@@ -256,12 +269,20 @@ if uploaded_file is not None:
                 progress = st.progress(0)
                 for i, text in enumerate(texts):
                     translated = translate_text(
-                        text, source_lang, target_lang, model, tokenizer, temperature, max_tokens
+                        text,
+                        source_lang,
+                        target_lang,
+                        model,
+                        tokenizer,
+                        temperature,
+                        max_tokens,
                     )
                     translations.append(translated)
                     progress.progress((i + 1) / len(texts))
 
-                result_df = pd.DataFrame({"original": texts, "translated": translations})
+                result_df = pd.DataFrame(
+                    {"original": texts, "translated": translations}
+                )
                 st.dataframe(result_df)
 
                 csv_output = result_df.to_csv(index=False)
