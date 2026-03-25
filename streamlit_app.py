@@ -199,7 +199,7 @@ def load_model() -> tuple:
     device = DEVICE if DEVICE != "auto" else detect_device()
     dtype = select_dtype(device)
     tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
-    model = AutoModelForCausalLM.from_pretrained(MODEL_ID, torch_dtype=dtype)
+    model = AutoModelForCausalLM.from_pretrained(MODEL_ID, dtype=dtype)
     model = model.to(device).eval()
     return tokenizer, model, device, dtype
 
