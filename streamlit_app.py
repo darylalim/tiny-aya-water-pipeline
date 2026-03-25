@@ -224,3 +224,50 @@ if st.button("Translate", disabled=not model_loaded):
                 input_text, source_lang, target_lang, model, tokenizer, temperature, max_tokens
             )
         st.text_area("Translation", value=result, height=150, disabled=True)
+
+# -- Batch Translation --------------------------------------------------------
+
+st.markdown("---")
+st.subheader("Batch Translation")
+
+uploaded_file = st.file_uploader("Upload CSV or TXT file", type=["csv", "txt"])
+
+if uploaded_file is not None:
+    # Column selector for CSV
+    column: str | None = None
+    if uploaded_file.name.endswith(".csv"):
+        preview_df = pd.read_csv(uploaded_file, encoding="utf-8", encoding_errors="replace")
+        uploaded_file.seek(0)  # Reset for re-read
+        column = st.selectbox("Column to translate", preview_df.columns.tolist())
+
+    if st.button("Translate File", disabled=not model_loaded):
+        if source_lang == target_lang:
+            st.warning("Source and target language are the same.")
+        else:
+            texts = parse_uploaded_file(uploaded_file, column=column)
+            if not texts:
+                st.warning("No text found in the uploaded file.")
+            else:
+                if len(texts) >= MAX_BATCH_ROWS:
+                    st.warning(
+                        f"File exceeds {MAX_BATCH_ROWS} rows. Only the first {MAX_BATCH_ROWS} will be translated."
+                    )
+                translations: list[str] = []
+                progress = st.progress(0)
+                for i, text in enumerate(texts):
+                    translated = translate_text(
+                        text, source_lang, target_lang, model, tokenizer, temperature, max_tokens
+                    )
+                    translations.append(translated)
+                    progress.progress((i + 1) / len(texts))
+
+                result_df = pd.DataFrame({"original": texts, "translated": translations})
+                st.dataframe(result_df)
+
+                csv_output = result_df.to_csv(index=False)
+                st.download_button(
+                    "Download CSV",
+                    csv_output,
+                    file_name="translations.csv",
+                    mime="text/csv",
+                )
