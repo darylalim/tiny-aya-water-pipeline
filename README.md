@@ -7,6 +7,7 @@ Translate between 43 European and Asia-Pacific languages using [CohereLabs/tiny-
 - Single text translation with language selection
 - Batch translation via CSV/TXT file upload with CSV download
 - Configurable generation parameters (temperature, max tokens)
+- Auto-detects CUDA, MPS, and CPU with optimal dtype per device
 - Local inference — no API key required
 
 ## Prerequisites
@@ -27,7 +28,7 @@ cp .env.example .env  # edit as needed
 uv run streamlit run streamlit_app.py
 ```
 
-First run downloads the model (~7 GB). Set `DEVICE=cuda` in `.env` for GPU acceleration.
+First run downloads the model (~7 GB). The app auto-detects the best available device (CUDA > MPS > CPU). To override, set `DEVICE=cuda`, `DEVICE=mps`, or `DEVICE=cpu` in `.env`.
 
 ## Development
 

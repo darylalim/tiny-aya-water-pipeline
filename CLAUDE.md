@@ -27,6 +27,7 @@ uv run ty check streamlit_app.py       # type check
 ## Conventions
 
 - Pure functions are defined above `import streamlit` so they can be imported and tested without Streamlit
-- Model loaded once via `@st.cache_resource`; BF16 on GPU, FP32 on CPU
+- Device auto-detected (CUDA > MPS > CPU) with optimal dtype (BF16, FP16, FP32); override via `DEVICE` in `.env`
+- Model loaded once via `@st.cache_resource`; inference runs under `torch.inference_mode()`
 - Config loaded from `.env` via python-dotenv with sensible defaults
 - License: CC-BY-NC (non-commercial use only)
