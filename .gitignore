@@ -17,6 +17,10 @@ __pycache__/
 .vscode/
 *.swp
 
+# Testing / linting
+.pytest_cache/
+.ruff_cache/
+
 # Streamlit
 .streamlit/
 
