@@ -150,3 +150,46 @@ def parse_uploaded_file(
     # Filter empty rows and truncate
     texts = [t for t in texts if t.strip()]
     return texts[:max_rows]
+
+
+import streamlit as st
+
+
+@st.cache_resource
+def load_model() -> tuple:
+    """Load tokenizer and model once, cached for the session lifetime."""
+    import torch
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+    dtype = torch.bfloat16 if DEVICE != "cpu" else torch.float32
+    model = AutoModelForCausalLM.from_pretrained(
+        MODEL_ID, torch_dtype=dtype, device_map=DEVICE
+    )
+    return tokenizer, model
+
+
+# -- Sidebar ------------------------------------------------------------------
+
+st.sidebar.title("Settings")
+temperature = st.sidebar.slider(
+    "Temperature", min_value=0.0, max_value=1.0, value=DEFAULT_TEMPERATURE, step=0.05
+)
+max_tokens = st.sidebar.slider(
+    "Max New Tokens", min_value=100, max_value=2000, value=DEFAULT_MAX_TOKENS, step=10
+)
+st.sidebar.markdown("---")
+st.sidebar.caption(
+    "Model: [CohereLabs/tiny-aya-water](https://huggingface.co/CohereLabs/tiny-aya-water)  \n"
+    "License: CC-BY-NC (non-commercial)"
+)
+
+# -- Model loading ------------------------------------------------------------
+
+try:
+    with st.spinner("Loading model... this may take a few minutes on first run."):
+        tokenizer, model = load_model()
+    model_loaded = True
+except Exception as e:
+    st.error(f"Failed to load model: {e}")
+    model_loaded = False
