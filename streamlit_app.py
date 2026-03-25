@@ -88,3 +88,35 @@ def build_translation_prompt(
             ),
         }
     ]
+
+
+def extract_translation(decoded_text: str) -> str:
+    """Clean up decoded model output (skip_special_tokens=True already applied)."""
+    return decoded_text.strip()
+
+
+def parse_uploaded_file(
+    file: BytesIO, column: str | None, max_rows: int = MAX_BATCH_ROWS
+) -> list[str]:
+    """Extract a list of text strings from an uploaded CSV or TXT file."""
+    name: str = getattr(file, "name", "")
+    if name.endswith(".csv"):
+        try:
+            df = pd.read_csv(file, encoding="utf-8", encoding_errors="replace")
+        except Exception:
+            return []
+        if column and column in df.columns:
+            texts = df[column].astype(str).tolist()
+        elif column:
+            return []
+        else:
+            texts = df.iloc[:, 0].astype(str).tolist()
+    else:
+        raw = file.read()
+        if isinstance(raw, bytes):
+            raw = raw.decode("utf-8", errors="replace")
+        texts = raw.splitlines()
+
+    # Filter empty rows and truncate
+    texts = [t for t in texts if t.strip()]
+    return texts[:max_rows]
