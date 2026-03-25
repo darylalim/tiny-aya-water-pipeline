@@ -95,6 +95,36 @@ def extract_translation(decoded_text: str) -> str:
     return decoded_text.strip()
 
 
+def translate_text(
+    text: str,
+    source_lang: str,
+    target_lang: str,
+    model: object,
+    tokenizer: object,
+    temperature: float = DEFAULT_TEMPERATURE,
+    max_tokens: int = DEFAULT_MAX_TOKENS,
+) -> str:
+    """Translate text using the model and return the cleaned result."""
+    messages = build_translation_prompt(text, source_lang, target_lang)
+    input_ids = tokenizer.apply_chat_template(
+        messages,
+        tokenize=True,
+        add_generation_prompt=True,
+        return_tensors="pt",
+    )
+    gen_tokens = model.generate(
+        input_ids,
+        max_new_tokens=max_tokens,
+        do_sample=True,
+        temperature=temperature,
+        top_p=TOP_P,
+    )
+    # Decode only the newly generated tokens (skip the input prompt)
+    output_tokens = gen_tokens[0][input_ids.shape[-1]:]
+    decoded = tokenizer.decode(output_tokens, skip_special_tokens=True)
+    return extract_translation(decoded)
+
+
 def parse_uploaded_file(
     file: BytesIO, column: str | None, max_rows: int = MAX_BATCH_ROWS
 ) -> list[str]:

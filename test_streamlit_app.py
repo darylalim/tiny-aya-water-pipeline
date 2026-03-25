@@ -103,3 +103,91 @@ def test_parse_uploaded_file_csv_missing_column() -> None:
     file.name = "test.csv"
     result = parse_uploaded_file(file, column="nonexistent")
     assert result == []
+
+
+from unittest.mock import MagicMock
+
+import torch
+
+from streamlit_app import translate_text
+
+
+def test_translate_text_returns_string() -> None:
+    mock_tokenizer = MagicMock()
+    mock_model = MagicMock()
+
+    # apply_chat_template with return_tensors="pt" returns a tensor
+    prompt_ids = torch.tensor([[1, 2, 3]])
+    mock_tokenizer.apply_chat_template.return_value = prompt_ids
+
+    # model.generate returns prompt + generated tokens
+    mock_model.generate.return_value = torch.tensor([[1, 2, 3, 4, 5]])
+
+    # decode receives only the generated tokens (4, 5) and returns text
+    mock_tokenizer.decode.return_value = "  Bonjour  "
+
+    result = translate_text(
+        text="Hello",
+        source_lang="English",
+        target_lang="French",
+        model=mock_model,
+        tokenizer=mock_tokenizer,
+        temperature=0.1,
+        max_tokens=700,
+    )
+    assert result == "Bonjour"
+
+
+def test_translate_text_calls_generate_with_correct_params() -> None:
+    mock_tokenizer = MagicMock()
+    mock_model = MagicMock()
+
+    prompt_ids = torch.tensor([[1, 2, 3]])
+    mock_tokenizer.apply_chat_template.return_value = prompt_ids
+    mock_model.generate.return_value = torch.tensor([[1, 2, 3, 4, 5]])
+    mock_tokenizer.decode.return_value = "Bonjour"
+
+    translate_text(
+        text="Hello",
+        source_lang="English",
+        target_lang="French",
+        model=mock_model,
+        tokenizer=mock_tokenizer,
+        temperature=0.3,
+        max_tokens=500,
+    )
+
+    # Verify generate was called
+    mock_model.generate.assert_called_once()
+    call_kwargs = mock_model.generate.call_args[1]
+    assert call_kwargs["max_new_tokens"] == 500
+    assert call_kwargs["temperature"] == 0.3
+    assert call_kwargs["do_sample"] is True
+
+
+def test_translate_text_passes_prompt_to_tokenizer() -> None:
+    mock_tokenizer = MagicMock()
+    mock_model = MagicMock()
+
+    prompt_ids = torch.tensor([[1, 2, 3]])
+    mock_tokenizer.apply_chat_template.return_value = prompt_ids
+    mock_model.generate.return_value = torch.tensor([[1, 2, 3, 4]])
+    mock_tokenizer.decode.return_value = "Hola"
+
+    translate_text(
+        text="Hello",
+        source_lang="English",
+        target_lang="Spanish",
+        model=mock_model,
+        tokenizer=mock_tokenizer,
+        temperature=0.1,
+        max_tokens=700,
+    )
+
+    # Verify the prompt was built and passed to apply_chat_template
+    call_args = mock_tokenizer.apply_chat_template.call_args
+    messages = call_args[0][0]
+    assert len(messages) == 1
+    assert "English" in messages[0]["content"]
+    assert "Spanish" in messages[0]["content"]
+    assert "Hello" in messages[0]["content"]
