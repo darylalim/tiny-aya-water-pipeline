@@ -2,6 +2,7 @@
 name = "tiny-aya-water-translator"
 version = "0.1.0"
 description = "Translation for European and Asia-Pacific languages with CohereLabs/tiny-aya-water"
+readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "accelerate>=1.13.0",
@@ -18,3 +19,12 @@ dev = [
     "ruff>=0.15.7",
     "ty>=0.0.25",
 ]
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.pytest.ini_options]
+testpaths = ["."]
