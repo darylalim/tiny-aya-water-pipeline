@@ -13,6 +13,7 @@ Streamlit translation and summarization app using CohereLabs/tiny-aya-water (3.3
 - `streamlit_app.py` — single-file app: config, pure functions, Streamlit UI
 - `test_streamlit_app.py` — pytest unit tests for all pure functions
 - `.env.example` — configurable environment variables
+- `docs/` — design specs and implementation plans
 
 ## Commands
 
@@ -27,8 +28,10 @@ uv run ty check streamlit_app.py       # type check
 ## Conventions
 
 - Pure functions are defined above `import streamlit` so they can be imported and tested without Streamlit
+- UI uses a task selector (`st.radio`) to switch between Translate and Summarize modes
+- `translate_text` and `summarize_text` handle both plain tensor and `BatchEncoding` returns from `apply_chat_template`
+- `clean_model_output` is the shared output cleanup function for both tasks
 - Device auto-detected (CUDA > MPS > CPU) with optimal dtype (BF16, FP16, FP32); override via `DEVICE` in `.env`
 - Model loaded once via `@st.cache_resource` with `dtype` (not deprecated `torch_dtype`); inference runs under `torch.inference_mode()`
-- `translate_text` and `summarize_text` handle both plain tensor and `BatchEncoding` returns from `apply_chat_template`
 - Config loaded from `.env` via python-dotenv with sensible defaults
 - License: CC-BY-NC (non-commercial use only)
