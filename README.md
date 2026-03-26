@@ -1,11 +1,12 @@
-# Tiny Aya Water Translator
+# Tiny Aya Water
 
-Translate between 43 European and Asia-Pacific languages using [CohereLabs/tiny-aya-water](https://huggingface.co/CohereLabs/tiny-aya-water) running locally.
+Translate and summarize across 43 European and Asia-Pacific languages using [CohereLabs/tiny-aya-water](https://huggingface.co/CohereLabs/tiny-aya-water) running locally.
 
 ## Features
 
 - Single text translation with language selection
-- Batch translation via CSV/TXT file upload with CSV download
+- Cross-lingual summarization with controllable length (short/medium/long)
+- Batch translation and summarization via CSV/TXT file upload with CSV download
 - Configurable generation parameters (temperature, max tokens)
 - Auto-detects CUDA, MPS, and CPU with optimal dtype per device
 - Local inference — no API key required

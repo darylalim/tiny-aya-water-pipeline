@@ -1,6 +1,6 @@
 ## Project
 
-Streamlit translation app using CohereLabs/tiny-aya-water (3.35B parameter multilingual model) with local HuggingFace Transformers inference. Supports single text and batch file (CSV/TXT) translation across 43 European and Asia-Pacific languages.
+Streamlit translation and summarization app using CohereLabs/tiny-aya-water (3.35B parameter multilingual model) with local HuggingFace Transformers inference. Supports single text and batch file (CSV/TXT) translation and summarization across 43 European and Asia-Pacific languages.
 
 ## Stack
 
@@ -29,6 +29,6 @@ uv run ty check streamlit_app.py       # type check
 - Pure functions are defined above `import streamlit` so they can be imported and tested without Streamlit
 - Device auto-detected (CUDA > MPS > CPU) with optimal dtype (BF16, FP16, FP32); override via `DEVICE` in `.env`
 - Model loaded once via `@st.cache_resource` with `dtype` (not deprecated `torch_dtype`); inference runs under `torch.inference_mode()`
-- `translate_text` handles both plain tensor and `BatchEncoding` returns from `apply_chat_template`
+- `translate_text` and `summarize_text` handle both plain tensor and `BatchEncoding` returns from `apply_chat_template`
 - Config loaded from `.env` via python-dotenv with sensible defaults
 - License: CC-BY-NC (non-commercial use only)
