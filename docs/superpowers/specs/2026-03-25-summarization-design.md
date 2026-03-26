@@ -8,27 +8,37 @@ Add cross-lingual summarization to the Tiny Aya Water app. Users can input text 
 
 Extend the existing single-file architecture (`streamlit_app.py`). No new files, dependencies, or environment variables.
 
+## Modifications to Existing Code
+
+### Rename `extract_translation` -> `clean_model_output`
+
+The existing `extract_translation(text: str) -> str` function is renamed to `clean_model_output` for task-neutral naming. Same implementation (`.strip()`). All call sites are updated:
+- `translate_text` in `streamlit_app.py` (currently calls `extract_translation(decoded)`)
+- Test imports in `test_streamlit_app.py` (line 11: `extract_translation` -> `clean_model_output`)
+- Four existing test functions renamed: `test_extract_translation_*` -> `test_clean_model_output_*`
+
+### Update page title and description
+
+- `st.title` changes from "Tiny Aya Water Translator" to "Tiny Aya Water" (task-neutral)
+- `st.markdown` description updated to mention both translation and summarization
+
 ## New Pure Functions
 
 Three new functions above `import streamlit`, following the existing pattern:
 
-### `get_summary_config(length: str) -> tuple[str, int]`
+### `get_summary_config(length: str) -> str`
 
-Maps a summary length label to a prompt instruction and default max tokens. Raises `ValueError` for unrecognized length values.
+Maps a summary length label to a prompt instruction string. Raises `ValueError` for unrecognized length values.
 
-| Length | Prompt instruction                          | Default max tokens |
-|--------|---------------------------------------------|--------------------|
-| Short  | "Write a brief summary in 1-2 sentences"    | 150                |
-| Medium | "Write a summary in a short paragraph"      | 350                |
-| Long   | "Write a detailed summary"                  | 700                |
+| Length | Prompt instruction                          |
+|--------|---------------------------------------------|
+| Short  | "Write a brief summary in 1-2 sentences"    |
+| Medium | "Write a summary in a short paragraph"      |
+| Long   | "Write a detailed summary"                  |
 
 ### `build_summarization_prompt(text: str, summary_length: str, target_lang: str) -> list[dict[str, str]]`
 
-Constructs a chat message list for summarization. Calls `get_summary_config` to get the length instruction. Returns a single user message asking the model to summarize the text in the target language at the specified length. Output format matches `build_translation_prompt`.
-
-### `clean_model_output(text: str) -> str`
-
-Rename of existing `extract_translation` to a task-neutral name. Same implementation (`.strip()`). Both `translate_text` and `summarize_text` will call this function. Existing tests for `extract_translation` are updated to reference the new name.
+Constructs a chat message list for summarization. Calls `get_summary_config` to get the length instruction. Returns a message list containing a single user message asking the model to summarize the text in the target language at the specified length. Output format matches `build_translation_prompt`.
 
 ### `summarize_text(text: str, target_lang: str, summary_length: str, model: Any, tokenizer: Any, temperature: float, max_tokens: int) -> str`
 
@@ -54,12 +64,12 @@ Identical to the current UI. No changes.
 
 ### Sidebar
 
-Temperature and model info remain shared across both tasks. The max tokens slider is shared but its default value updates based on context: in Summarize mode, switching summary length updates the slider default via `get_summary_config`. The user can still manually adjust the slider to override the length-based default.
+No changes. Temperature, max tokens slider, and model info remain shared across both tasks. The max tokens slider always defaults to `DEFAULT_MAX_TOKENS` regardless of task or summary length. Summary length controls the model's output through prompt wording only — the slider serves as a hard token cap the user can adjust manually. The `get_summary_config` default max tokens values are not wired to the slider.
 
 ## Error Handling
 
 - **Empty input**: show `st.warning("Please enter some text to summarize.")` and do not call the model, matching the translation flow.
-- **Batch generation failures**: if `summarize_text` raises during a batch row, catch the exception, insert an error message (e.g., `"[Error: generation failed]"`) for that row, and continue processing remaining rows.
+- **Batch generation failures**: if `summarize_text` raises during a batch row, catch the exception, show `st.warning` for the failed row, insert `"[Error: generation failed]"` in the result for that row, and continue processing remaining rows. This is new behavior for summarization only — the translation batch flow remains unchanged (no per-row error handling).
 - **Short input with long summary mode**: no special handling — the model naturally handles this. The prompt instructs the desired length; the model will produce what it can.
 
 ## Config and Environment
@@ -68,15 +78,11 @@ No new environment variables. Summary length defaults are hardcoded in `get_summ
 
 ## Tests
 
-New tests in `test_streamlit_app.py`, following existing patterns. No changes to existing tests.
-
-### `clean_model_output` (~4 tests, renamed from `extract_translation`)
-
-- Existing tests updated to use the new name. Same assertions.
+New tests in `test_streamlit_app.py`, following existing patterns. Existing `extract_translation` tests are renamed to `clean_model_output` (same assertions, covered in "Modifications to Existing Code" above).
 
 ### `get_summary_config` (~4 tests)
 
-- Returns correct prompt instruction and max tokens for each length (short, medium, long).
+- Returns correct prompt instruction for each length (short, medium, long).
 - Raises `ValueError` for invalid length.
 
 ### `build_summarization_prompt` (~5 tests)
