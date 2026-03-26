@@ -133,6 +133,22 @@ def get_summary_config(length: str) -> str:
     return configs[length]
 
 
+def build_summarization_prompt(
+    text: str, summary_length: str, target_lang: str
+) -> list[dict[str, str]]:
+    """Build the chat messages list for a summarization request."""
+    length_instruction = get_summary_config(summary_length)
+    return [
+        {
+            "role": "user",
+            "content": (
+                f"{length_instruction} of the following text in {target_lang}. "
+                f"Output only the summary, nothing else.\n\n{text}"
+            ),
+        }
+    ]
+
+
 def translate_text(
     text: str,
     source_lang: str,

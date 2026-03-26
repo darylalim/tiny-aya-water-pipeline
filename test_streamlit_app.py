@@ -7,6 +7,7 @@ import torch
 import streamlit_app
 from streamlit_app import (
     LANGUAGES,
+    build_summarization_prompt,
     build_translation_prompt,
     clean_model_output,
     detect_device,
@@ -344,3 +345,34 @@ def test_translate_text_passes_prompt_to_tokenizer() -> None:
     assert "English" in messages[0]["content"]
     assert "Spanish" in messages[0]["content"]
     assert "Hello" in messages[0]["content"]
+
+
+def test_build_summarization_prompt_returns_single_message() -> None:
+    result = build_summarization_prompt("Some long text here.", "Short", "English")
+    assert len(result) == 1
+    assert result[0]["role"] == "user"
+
+
+def test_build_summarization_prompt_contains_target_language() -> None:
+    result = build_summarization_prompt("Some text.", "Medium", "French")
+    content = result[0]["content"]
+    assert "French" in content
+
+
+def test_build_summarization_prompt_contains_input_text() -> None:
+    result = build_summarization_prompt("The quick brown fox.", "Short", "English")
+    content = result[0]["content"]
+    assert "The quick brown fox." in content
+
+
+def test_build_summarization_prompt_includes_summarize_instruction() -> None:
+    result = build_summarization_prompt("Some text.", "Short", "English")
+    content = result[0]["content"]
+    assert "summar" in content.lower()
+
+
+def test_build_summarization_prompt_includes_length_wording() -> None:
+    result = build_summarization_prompt("Some text.", "Short", "English")
+    content = result[0]["content"]
+    assert "brief summary" in content
+    assert "1-2 sentences" in content
