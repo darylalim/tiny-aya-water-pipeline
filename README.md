@@ -37,6 +37,7 @@ First run downloads the model (~7 GB). The app auto-detects the best available d
 uv run pytest test_streamlit_app.py -v  # run tests
 uv run ruff check --fix .              # lint
 uv run ruff format .                   # format
+uv run ty check streamlit_app.py       # type check
 ```
 
 ## License
