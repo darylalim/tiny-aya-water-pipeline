@@ -14,6 +14,7 @@ from streamlit_app import (
     get_summary_config,
     parse_uploaded_file,
     select_dtype,
+    summarize_text,
     translate_text,
 )
 
@@ -376,3 +377,111 @@ def test_build_summarization_prompt_includes_length_wording() -> None:
     content = result[0]["content"]
     assert "brief summary" in content
     assert "1-2 sentences" in content
+
+
+def test_summarize_text_plain_tensor_path() -> None:
+    """Plain tensor path: apply_chat_template returns a tensor directly."""
+    mock_tokenizer = MagicMock()
+    mock_model = MagicMock()
+    mock_model.device = torch.device("cpu")
+
+    prompt_ids = torch.tensor([[1, 2, 3]])
+    mock_tokenizer.apply_chat_template.return_value = prompt_ids
+    mock_model.generate.return_value = torch.tensor([[1, 2, 3, 4]])
+    mock_tokenizer.decode.return_value = "A brief summary."
+
+    summarize_text(
+        text="Some long text to summarize.",
+        target_lang="English",
+        summary_length="Short",
+        model=mock_model,
+        tokenizer=mock_tokenizer,
+        temperature=0.1,
+        max_tokens=700,
+    )
+
+    input_ids = mock_model.generate.call_args[0][0]
+    assert input_ids.device == torch.device("cpu")
+    assert mock_model.generate.call_args[1]["attention_mask"] is None
+
+
+def test_summarize_text_handles_batch_encoding() -> None:
+    """BatchEncoding path: apply_chat_template returns a dict-like object."""
+    mock_tokenizer = MagicMock()
+    mock_model = MagicMock()
+    mock_model.device = torch.device("cpu")
+
+    prompt_ids = torch.tensor([[1, 2, 3]])
+    attention = torch.tensor([[1, 1, 1]])
+    batch_encoding = {"input_ids": prompt_ids, "attention_mask": attention}
+    mock_tokenizer.apply_chat_template.return_value = batch_encoding
+
+    mock_model.generate.return_value = torch.tensor([[1, 2, 3, 4, 5]])
+    mock_tokenizer.decode.return_value = "A brief summary."
+
+    result = summarize_text(
+        text="Some long text to summarize.",
+        target_lang="English",
+        summary_length="Short",
+        model=mock_model,
+        tokenizer=mock_tokenizer,
+        temperature=0.1,
+        max_tokens=700,
+    )
+
+    assert result == "A brief summary."
+    input_ids = mock_model.generate.call_args[0][0]
+    assert input_ids.device == torch.device("cpu")
+    mask = mock_model.generate.call_args[1]["attention_mask"]
+    assert mask.device == torch.device("cpu")
+    assert torch.equal(mask, attention)
+
+
+def test_summarize_text_returns_cleaned_string() -> None:
+    mock_tokenizer = MagicMock()
+    mock_model = MagicMock()
+    mock_model.device = torch.device("cpu")
+
+    prompt_ids = torch.tensor([[1, 2, 3]])
+    mock_tokenizer.apply_chat_template.return_value = prompt_ids
+    mock_model.generate.return_value = torch.tensor([[1, 2, 3, 4, 5]])
+    mock_tokenizer.decode.return_value = "  A brief summary.  "
+
+    result = summarize_text(
+        text="Some long text.",
+        target_lang="English",
+        summary_length="Short",
+        model=mock_model,
+        tokenizer=mock_tokenizer,
+        temperature=0.1,
+        max_tokens=700,
+    )
+    assert result == "A brief summary."
+
+
+def test_summarize_text_calls_generate_with_correct_params() -> None:
+    mock_tokenizer = MagicMock()
+    mock_model = MagicMock()
+    mock_model.device = torch.device("cpu")
+
+    prompt_ids = torch.tensor([[1, 2, 3]])
+    mock_tokenizer.apply_chat_template.return_value = prompt_ids
+    mock_model.generate.return_value = torch.tensor([[1, 2, 3, 4, 5]])
+    mock_tokenizer.decode.return_value = "Summary."
+
+    summarize_text(
+        text="Some text.",
+        target_lang="French",
+        summary_length="Medium",
+        model=mock_model,
+        tokenizer=mock_tokenizer,
+        temperature=0.3,
+        max_tokens=500,
+    )
+
+    mock_model.generate.assert_called_once()
+    call_kwargs = mock_model.generate.call_args[1]
+    assert call_kwargs["max_new_tokens"] == 500
+    assert call_kwargs["temperature"] == 0.3
+    assert call_kwargs["do_sample"] is True
+    assert call_kwargs["top_p"] == streamlit_app.TOP_P

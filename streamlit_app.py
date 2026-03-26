@@ -189,6 +189,45 @@ def translate_text(
     return clean_model_output(decoded)
 
 
+def summarize_text(
+    text: str,
+    target_lang: str,
+    summary_length: str,
+    model: Any,
+    tokenizer: Any,
+    temperature: float = DEFAULT_TEMPERATURE,
+    max_tokens: int = DEFAULT_MAX_TOKENS,
+) -> str:
+    """Summarize text using the model and return the cleaned result."""
+    import torch
+
+    messages = build_summarization_prompt(text, summary_length, target_lang)
+    inputs = tokenizer.apply_chat_template(
+        messages,
+        tokenize=True,
+        add_generation_prompt=True,
+        return_tensors="pt",
+    )
+    if hasattr(inputs, "keys"):
+        input_ids = inputs["input_ids"].to(model.device)
+        attention_mask = inputs["attention_mask"].to(model.device)
+    else:
+        input_ids = inputs.to(model.device)
+        attention_mask = None
+    with torch.inference_mode():
+        gen_tokens = model.generate(
+            input_ids,
+            attention_mask=attention_mask,
+            max_new_tokens=max_tokens,
+            do_sample=True,
+            temperature=temperature,
+            top_p=TOP_P,
+        )
+    output_tokens = gen_tokens[0][input_ids.shape[-1] :]
+    decoded = tokenizer.decode(output_tokens, skip_special_tokens=True)
+    return clean_model_output(decoded)
+
+
 def parse_uploaded_file(
     file: BytesIO, column: str | None, max_rows: int = MAX_BATCH_ROWS
 ) -> list[str]:
