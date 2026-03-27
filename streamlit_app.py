@@ -240,7 +240,7 @@ st.markdown(
 
 try:
     with st.spinner("Loading model... this may take a few minutes on first run."):
-        tokenizer, model, device, dtype = load_model()
+        tokenizer, model, _device, _dtype = load_model()
     model_url = "https://huggingface.co/CohereLabs/tiny-aya-water"
     st.caption(
         f"Powered by [tiny-aya-water]({model_url}) · 43 languages"
@@ -248,7 +248,7 @@ try:
     model_loaded = True
 except Exception as e:
     st.error(f"Failed to load model: {e}")
-    tokenizer, model, device, dtype = None, None, None, None
+    tokenizer, model = None, None
     model_loaded = False
 
 # -- Tabs ---------------------------------------------------------------------
