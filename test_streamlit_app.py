@@ -1,4 +1,3 @@
-from io import BytesIO
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,7 +11,6 @@ from streamlit_app import (
     clean_model_output,
     detect_device,
     get_summary_config,
-    parse_uploaded_file,
     select_dtype,
     summarize_text,
     translate_text,
@@ -501,46 +499,52 @@ def test_summarize_text_passes_prompt_to_tokenizer() -> None:
     assert "summar" in messages[0]["content"].lower()
 
 
-# -- parse_uploaded_file -------------------------------------------------------
+# -- default parameters -------------------------------------------------------
 
 
-def test_parse_uploaded_file_csv_default_column() -> None:
-    csv_content = b"text,other\nhello,1\nworld,2\n"
-    file = BytesIO(csv_content)
-    file.name = "test.csv"
-    result = parse_uploaded_file(file, column="text")
-    assert result == ["hello", "world"]
+def test_translate_text_uses_default_params() -> None:
+    """When temperature/max_tokens are omitted, function defaults apply."""
+    mock_tokenizer = MagicMock()
+    mock_model = MagicMock()
+    mock_model.device = torch.device("cpu")
+
+    prompt_ids = torch.tensor([[1, 2, 3]])
+    mock_tokenizer.apply_chat_template.return_value = prompt_ids
+    mock_model.generate.return_value = torch.tensor([[1, 2, 3, 4]])
+    mock_tokenizer.decode.return_value = "Bonjour"
+
+    translate_text(
+        text="Hello",
+        source_lang="English",
+        target_lang="French",
+        model=mock_model,
+        tokenizer=mock_tokenizer,
+    )
+
+    call_kwargs = mock_model.generate.call_args[1]
+    assert call_kwargs["temperature"] == streamlit_app.DEFAULT_TEMPERATURE
+    assert call_kwargs["max_new_tokens"] == streamlit_app.DEFAULT_MAX_TOKENS
 
 
-def test_parse_uploaded_file_txt() -> None:
-    txt_content = b"hello\nworld\n"
-    file = BytesIO(txt_content)
-    file.name = "test.txt"
-    result = parse_uploaded_file(file, column=None)
-    assert result == ["hello", "world"]
+def test_summarize_text_uses_default_params() -> None:
+    """When temperature/max_tokens are omitted, function defaults apply."""
+    mock_tokenizer = MagicMock()
+    mock_model = MagicMock()
+    mock_model.device = torch.device("cpu")
 
+    prompt_ids = torch.tensor([[1, 2, 3]])
+    mock_tokenizer.apply_chat_template.return_value = prompt_ids
+    mock_model.generate.return_value = torch.tensor([[1, 2, 3, 4]])
+    mock_tokenizer.decode.return_value = "Summary."
 
-def test_parse_uploaded_file_skips_empty_rows() -> None:
-    txt_content = b"hello\n\nworld\n\n"
-    file = BytesIO(txt_content)
-    file.name = "test.txt"
-    result = parse_uploaded_file(file, column=None)
-    assert result == ["hello", "world"]
+    summarize_text(
+        text="Some long text.",
+        target_lang="English",
+        summary_length="Short",
+        model=mock_model,
+        tokenizer=mock_tokenizer,
+    )
 
-
-def test_parse_uploaded_file_truncates_at_max_rows() -> None:
-    lines = "\n".join(f"line{i}" for i in range(200)) + "\n"
-    file = BytesIO(lines.encode("utf-8"))
-    file.name = "test.txt"
-    result = parse_uploaded_file(file, column=None, max_rows=100)
-    assert len(result) == 100
-    assert result[0] == "line0"
-    assert result[99] == "line99"
-
-
-def test_parse_uploaded_file_csv_missing_column() -> None:
-    csv_content = b"text,other\nhello,1\n"
-    file = BytesIO(csv_content)
-    file.name = "test.csv"
-    result = parse_uploaded_file(file, column="nonexistent")
-    assert result == []
+    call_kwargs = mock_model.generate.call_args[1]
+    assert call_kwargs["temperature"] == streamlit_app.DEFAULT_TEMPERATURE
+    assert call_kwargs["max_new_tokens"] == streamlit_app.DEFAULT_MAX_TOKENS
