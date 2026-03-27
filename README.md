@@ -6,8 +6,6 @@ Translate and summarize across 43 European and Asia-Pacific languages using [Coh
 
 - Single text translation with language selection
 - Cross-lingual summarization with controllable length (short/medium/long)
-- Batch translation and summarization via CSV/TXT file upload with CSV download
-- Configurable generation parameters (temperature, max tokens)
 - Auto-detects CUDA, MPS, and CPU with optimal dtype per device
 - Local inference — no API key required
 

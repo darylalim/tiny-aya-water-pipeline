@@ -1,11 +1,11 @@
 ## Project
 
-Streamlit translation and summarization app using CohereLabs/tiny-aya-water (3.35B parameter multilingual model) with local HuggingFace Transformers inference. Supports single text and batch file (CSV/TXT) translation and summarization across 43 European and Asia-Pacific languages.
+Streamlit translation and summarization app using CohereLabs/tiny-aya-water (3.35B parameter multilingual model) with local HuggingFace Transformers inference. Supports single text translation and summarization across 43 European and Asia-Pacific languages.
 
 ## Stack
 
 - Python 3.12+, uv for project management
-- Streamlit (UI), Transformers + PyTorch (inference), Pandas (batch CSV)
+- Streamlit (UI), Transformers + PyTorch (inference)
 - python-dotenv for configuration
 
 ## Structure
@@ -28,7 +28,7 @@ uv run ty check streamlit_app.py       # type check
 ## Conventions
 
 - Pure functions are defined above `import streamlit` so they can be imported and tested without Streamlit
-- UI uses a task selector (`st.radio`) to switch between Translate and Summarize modes
+- UI uses `st.tabs` to switch between Translate and Summarize modes
 - `translate_text` and `summarize_text` handle both plain tensor and `BatchEncoding` returns from `apply_chat_template`
 - `clean_model_output` is the shared output cleanup function for both tasks
 - Device auto-detected (CUDA > MPS > CPU) with optimal dtype (BF16, FP16, FP32); override via `DEVICE` in `.env`
