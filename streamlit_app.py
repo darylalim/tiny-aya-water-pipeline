@@ -257,33 +257,6 @@ def load_model() -> tuple:
     return tokenizer, model, device, dtype
 
 
-# -- Sidebar ------------------------------------------------------------------
-
-st.sidebar.title("Settings")
-temperature = st.sidebar.slider(
-    "Temperature", min_value=0.0, max_value=1.0, value=DEFAULT_TEMPERATURE, step=0.05
-)
-max_tokens = st.sidebar.slider(
-    "Max New Tokens", min_value=100, max_value=2000, value=DEFAULT_MAX_TOKENS, step=10
-)
-st.sidebar.markdown("---")
-st.sidebar.caption(
-    "Model: [CohereLabs/tiny-aya-water]"
-    "(https://huggingface.co/CohereLabs/tiny-aya-water)  \n"
-    "License: CC-BY-NC (non-commercial)"
-)
-
-# -- Model loading ------------------------------------------------------------
-
-try:
-    with st.spinner("Loading model... this may take a few minutes on first run."):
-        tokenizer, model, device, dtype = load_model()
-    st.sidebar.info(f"Device: {device} | Dtype: {dtype}")
-    model_loaded = True
-except Exception as e:
-    st.error(f"Failed to load model: {e}")
-    model_loaded = False
-
 # -- Main page ----------------------------------------------------------------
 
 st.title("Tiny Aya Water")
@@ -292,6 +265,20 @@ st.markdown(
     "[CohereLabs/tiny-aya-water](https://huggingface.co/CohereLabs/tiny-aya-water) "
     "running locally."
 )
+
+# -- Model loading ------------------------------------------------------------
+
+try:
+    with st.spinner("Loading model... this may take a few minutes on first run."):
+        tokenizer, model, device, dtype = load_model()
+    st.caption(
+        f"Model: [CohereLabs/tiny-aya-water](https://huggingface.co/CohereLabs/tiny-aya-water) "
+        f"| Device: {device} | Dtype: {dtype} | License: CC-BY-NC"
+    )
+    model_loaded = True
+except Exception as e:
+    st.error(f"Failed to load model: {e}")
+    model_loaded = False
 
 task = st.radio("Task", ["Translate", "Summarize"], horizontal=True)
 
