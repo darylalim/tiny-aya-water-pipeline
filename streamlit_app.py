@@ -243,9 +243,7 @@ try:
         tokenizer, model, device, dtype = load_model()
     model_url = "https://huggingface.co/CohereLabs/tiny-aya-water"
     st.caption(
-        f"Model: [CohereLabs/tiny-aya-water]({model_url}) "
-        f"| Device: {device} | Dtype: {dtype} "
-        f"| License: CC-BY-NC"
+        f"Powered by [tiny-aya-water]({model_url}) · 43 languages"
     )
     model_loaded = True
 except Exception as e:
