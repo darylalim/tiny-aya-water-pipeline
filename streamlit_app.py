@@ -256,6 +256,7 @@ except Exception as e:
 translate_tab, summarize_tab = st.tabs(["Translate", "Summarize"])
 
 with translate_tab:
+    st.markdown("**① Choose languages**")
     col1, col2 = st.columns(2)
     with col1:
         source_lang = st.selectbox(
@@ -266,7 +267,13 @@ with translate_tab:
             "Target Language", LANGUAGES, index=LANGUAGES.index("French")
         )
 
-    translate_input = st.text_area("Text to translate", height=150)
+    st.divider()
+    st.markdown("**② Enter text**")
+    translate_input = st.text_area(
+        "Text to translate",
+        placeholder="e.g. The weather is nice today",
+        height=150,
+    )
 
     if st.button("Translate", disabled=not model_loaded):
         if not translate_input.strip():
@@ -282,7 +289,9 @@ with translate_tab:
                     model,
                     tokenizer,
                 )
-            st.text_area("Translation", value=result, height=150, disabled=True)
+            st.divider()
+            st.markdown("**③ Result**")
+            st.success(result)
 
 with summarize_tab:
     col1, col2 = st.columns(2)
