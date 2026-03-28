@@ -47,6 +47,40 @@ def app() -> AppTest:
     return at
 
 
+def _rerun_with_mocks(app: AppTest) -> None:
+    """Re-run the app with simple mocks (no generate chain needed)."""
+    mock_tokenizer = MagicMock()
+    mock_model = MagicMock()
+    mock_model.device = "cpu"
+    with (
+        patch(
+            "transformers.AutoTokenizer.from_pretrained",
+            return_value=mock_tokenizer,
+        ),
+        patch(
+            "transformers.AutoModelForCausalLM.from_pretrained",
+            return_value=mock_model,
+        ),
+    ):
+        app.run(timeout=60)
+
+
+def _make_inference_mocks(decode_result: str) -> tuple[MagicMock, MagicMock]:
+    """Return (mock_tokenizer, mock_model) configured for a successful _generate call.
+    """
+    mock_tokenizer = MagicMock()
+    mock_model = MagicMock()
+
+    final_model = mock_model.to.return_value.eval.return_value
+    final_model.device = torch.device("cpu")
+    final_model.generate.return_value = torch.tensor([[1, 2, 3, 4, 5]])
+
+    mock_tokenizer.apply_chat_template.return_value = torch.tensor([[1, 2, 3]])
+    mock_tokenizer.decode.return_value = decode_result
+
+    return mock_tokenizer, mock_model
+
+
 # -- Caption ------------------------------------------------------------------
 
 
@@ -106,36 +140,9 @@ def test_translate_tab_button_exists(app: AppTest) -> None:
 # -- Translate tab: interactions ----------------------------------------------
 
 
-def _make_translate_mocks() -> tuple:
-    """Return (mock_tokenizer, mock_model) configured for a successful _generate call.
-
-    load_model() does ``model = model.to(device).eval()``, so the object stored
-    in the @st.cache_resource cache is ``mock_model.to.return_value.eval.return_value``.
-    That chained object must have:
-      - ``.device`` set to a real ``torch.device`` so ``tensor.to(model.device)`` works
-      - ``.generate.return_value`` set to a real tensor
-    The tokenizer's ``apply_chat_template`` must return a real tensor (plain path,
-    not BatchEncoding) and ``decode`` must return the expected string.
-    """
-    mock_tokenizer = MagicMock()
-    mock_model = MagicMock()
-
-    # The actual model stored by load_model() after model.to(device).eval()
-    final_model = mock_model.to.return_value.eval.return_value
-    final_model.device = torch.device("cpu")
-    final_model.generate.return_value = torch.tensor([[1, 2, 3, 4, 5]])
-
-    # Tokenizer: return a plain tensor (not BatchEncoding) so _generate takes
-    # the ``else`` branch and calls inputs.to(model.device) directly
-    mock_tokenizer.apply_chat_template.return_value = torch.tensor([[1, 2, 3]])
-    mock_tokenizer.decode.return_value = "Bonjour"
-
-    return mock_tokenizer, mock_model
-
-
 def test_translate_success_shows_result() -> None:
     """Clicking Translate with valid input shows the translated text."""
-    mock_tokenizer, mock_model = _make_translate_mocks()
+    mock_tokenizer, mock_model = _make_inference_mocks("Bonjour")
     with (
         patch(
             "transformers.AutoTokenizer.from_pretrained",
@@ -159,7 +166,7 @@ def test_translate_success_shows_result() -> None:
 
 def test_translate_success_shows_result_label() -> None:
     """After a successful translation the '③ Result' label is shown."""
-    mock_tokenizer, mock_model = _make_translate_mocks()
+    mock_tokenizer, mock_model = _make_inference_mocks("Bonjour")
     with (
         patch(
             "transformers.AutoTokenizer.from_pretrained",
@@ -183,23 +190,8 @@ def test_translate_success_shows_result_label() -> None:
 
 def test_translate_empty_text_shows_warning(app: AppTest) -> None:
     """Clicking Translate with an empty text area shows a warning."""
-    tab = app.tabs[0]
-    tab.button[0].click()
-
-    mock_tokenizer = MagicMock()
-    mock_model = MagicMock()
-    mock_model.device = "cpu"
-    with (
-        patch(
-            "transformers.AutoTokenizer.from_pretrained",
-            return_value=mock_tokenizer,
-        ),
-        patch(
-            "transformers.AutoModelForCausalLM.from_pretrained",
-            return_value=mock_model,
-        ),
-    ):
-        app.run(timeout=60)
+    app.tabs[0].button[0].click()
+    _rerun_with_mocks(app)
 
     tab = app.tabs[0]
     warning_values = [w.value for w in tab.warning]
@@ -213,21 +205,7 @@ def test_translate_same_language_shows_warning(app: AppTest) -> None:
     tab.selectbox[1].set_value("English")
     tab.text_area[0].set_value("Hello")
     tab.button[0].click()
-
-    mock_tokenizer = MagicMock()
-    mock_model = MagicMock()
-    mock_model.device = "cpu"
-    with (
-        patch(
-            "transformers.AutoTokenizer.from_pretrained",
-            return_value=mock_tokenizer,
-        ),
-        patch(
-            "transformers.AutoModelForCausalLM.from_pretrained",
-            return_value=mock_model,
-        ),
-    ):
-        app.run(timeout=60)
+    _rerun_with_mocks(app)
 
     tab = app.tabs[0]
     warning_values = [w.value for w in tab.warning]
@@ -236,50 +214,18 @@ def test_translate_same_language_shows_warning(app: AppTest) -> None:
 
 def test_translate_change_source_language(app: AppTest) -> None:
     """Changing the source language selectbox updates its value."""
-    tab = app.tabs[0]
-    tab.selectbox[0].set_value("Spanish")
+    app.tabs[0].selectbox[0].set_value("Spanish")
+    _rerun_with_mocks(app)
 
-    mock_tokenizer = MagicMock()
-    mock_model = MagicMock()
-    mock_model.device = "cpu"
-    with (
-        patch(
-            "transformers.AutoTokenizer.from_pretrained",
-            return_value=mock_tokenizer,
-        ),
-        patch(
-            "transformers.AutoModelForCausalLM.from_pretrained",
-            return_value=mock_model,
-        ),
-    ):
-        app.run(timeout=60)
-
-    tab = app.tabs[0]
-    assert tab.selectbox[0].value == "Spanish"
+    assert app.tabs[0].selectbox[0].value == "Spanish"
 
 
 def test_translate_change_target_language(app: AppTest) -> None:
     """Changing the target language selectbox updates its value."""
-    tab = app.tabs[0]
-    tab.selectbox[1].set_value("Japanese")
+    app.tabs[0].selectbox[1].set_value("Japanese")
+    _rerun_with_mocks(app)
 
-    mock_tokenizer = MagicMock()
-    mock_model = MagicMock()
-    mock_model.device = "cpu"
-    with (
-        patch(
-            "transformers.AutoTokenizer.from_pretrained",
-            return_value=mock_tokenizer,
-        ),
-        patch(
-            "transformers.AutoModelForCausalLM.from_pretrained",
-            return_value=mock_model,
-        ),
-    ):
-        app.run(timeout=60)
-
-    tab = app.tabs[0]
-    assert tab.selectbox[1].value == "Japanese"
+    assert app.tabs[0].selectbox[1].value == "Japanese"
 
 
 # -- Summarize tab: structure -------------------------------------------------
@@ -327,30 +273,9 @@ def test_summarize_tab_button_exists(app: AppTest) -> None:
 # -- Summarize tab: interactions ----------------------------------------------
 
 
-def _make_summarize_mocks() -> tuple:
-    """Return (mock_tokenizer, mock_model) configured for a successful summarize call.
-
-    Identical to _make_translate_mocks() except decode returns "A brief summary."
-    """
-    mock_tokenizer = MagicMock()
-    mock_model = MagicMock()
-
-    # The actual model stored by load_model() after model.to(device).eval()
-    final_model = mock_model.to.return_value.eval.return_value
-    final_model.device = torch.device("cpu")
-    final_model.generate.return_value = torch.tensor([[1, 2, 3, 4, 5]])
-
-    # Tokenizer: return a plain tensor (not BatchEncoding) so _generate takes
-    # the ``else`` branch and calls inputs.to(model.device) directly
-    mock_tokenizer.apply_chat_template.return_value = torch.tensor([[1, 2, 3]])
-    mock_tokenizer.decode.return_value = "A brief summary."
-
-    return mock_tokenizer, mock_model
-
-
 def test_summarize_success_shows_result() -> None:
     """Clicking Summarize with valid input shows the summarized text."""
-    mock_tokenizer, mock_model = _make_summarize_mocks()
+    mock_tokenizer, mock_model = _make_inference_mocks("A brief summary.")
     with (
         patch(
             "transformers.AutoTokenizer.from_pretrained",
@@ -374,7 +299,7 @@ def test_summarize_success_shows_result() -> None:
 
 def test_summarize_success_shows_result_label() -> None:
     """After a successful summarize the '③ Result' label is shown."""
-    mock_tokenizer, mock_model = _make_summarize_mocks()
+    mock_tokenizer, mock_model = _make_inference_mocks("A brief summary.")
     with (
         patch(
             "transformers.AutoTokenizer.from_pretrained",
@@ -398,23 +323,8 @@ def test_summarize_success_shows_result_label() -> None:
 
 def test_summarize_empty_text_shows_warning(app: AppTest) -> None:
     """Clicking Summarize with an empty text area shows a warning."""
-    tab = app.tabs[1]
-    tab.button[0].click()
-
-    mock_tokenizer = MagicMock()
-    mock_model = MagicMock()
-    mock_model.device = "cpu"
-    with (
-        patch(
-            "transformers.AutoTokenizer.from_pretrained",
-            return_value=mock_tokenizer,
-        ),
-        patch(
-            "transformers.AutoModelForCausalLM.from_pretrained",
-            return_value=mock_model,
-        ),
-    ):
-        app.run(timeout=60)
+    app.tabs[1].button[0].click()
+    _rerun_with_mocks(app)
 
     tab = app.tabs[1]
     warning_values = [w.value for w in tab.warning]
@@ -423,47 +333,15 @@ def test_summarize_empty_text_shows_warning(app: AppTest) -> None:
 
 def test_summarize_change_radio_to_long(app: AppTest) -> None:
     """Changing the summary length radio to 'Long' updates its value."""
-    tab = app.tabs[1]
-    tab.radio[0].set_value("Long")
+    app.tabs[1].radio[0].set_value("Long")
+    _rerun_with_mocks(app)
 
-    mock_tokenizer = MagicMock()
-    mock_model = MagicMock()
-    mock_model.device = "cpu"
-    with (
-        patch(
-            "transformers.AutoTokenizer.from_pretrained",
-            return_value=mock_tokenizer,
-        ),
-        patch(
-            "transformers.AutoModelForCausalLM.from_pretrained",
-            return_value=mock_model,
-        ),
-    ):
-        app.run(timeout=60)
-
-    tab = app.tabs[1]
-    assert tab.radio[0].value == "Long"
+    assert app.tabs[1].radio[0].value == "Long"
 
 
 def test_summarize_change_output_language(app: AppTest) -> None:
     """Changing the output language selectbox to 'French' updates its value."""
-    tab = app.tabs[1]
-    tab.selectbox[0].set_value("French")
+    app.tabs[1].selectbox[0].set_value("French")
+    _rerun_with_mocks(app)
 
-    mock_tokenizer = MagicMock()
-    mock_model = MagicMock()
-    mock_model.device = "cpu"
-    with (
-        patch(
-            "transformers.AutoTokenizer.from_pretrained",
-            return_value=mock_tokenizer,
-        ),
-        patch(
-            "transformers.AutoModelForCausalLM.from_pretrained",
-            return_value=mock_model,
-        ),
-    ):
-        app.run(timeout=60)
-
-    tab = app.tabs[1]
-    assert tab.selectbox[0].value == "French"
+    assert app.tabs[1].selectbox[0].value == "French"
