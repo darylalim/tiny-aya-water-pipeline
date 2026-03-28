@@ -66,7 +66,7 @@ def _rerun_with_mocks(app: AppTest) -> None:
 
 
 def _make_inference_mocks(decode_result: str) -> tuple[MagicMock, MagicMock]:
-    """Return (mock_tokenizer, mock_model) configured for a successful _generate call."""
+    """Return mocks configured for a successful _generate call."""
     mock_tokenizer = MagicMock()
     mock_model = MagicMock()
 
@@ -113,7 +113,7 @@ def test_caption_contains_powered_by(app: AppTest) -> None:
 
 def test_caption_contains_language_count(app: AppTest) -> None:
     captions = [c.value for c in app.caption]
-    assert any("43 languages" in c for c in captions)
+    assert any("43 European and Asia-Pacific languages" in c for c in captions)
 
 
 # -- Translate tab: structure -------------------------------------------------
