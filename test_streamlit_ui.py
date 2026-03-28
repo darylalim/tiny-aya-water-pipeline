@@ -122,13 +122,13 @@ def test_caption_contains_language_count(app: AppTest) -> None:
 def test_translate_tab_has_choose_languages_label(app: AppTest) -> None:
     tab = app.tabs[0]
     markdown_values = [m.value for m in tab.markdown]
-    assert any("① Choose languages" in v for v in markdown_values)
+    assert any("① Pick your languages" in v for v in markdown_values)
 
 
 def test_translate_tab_has_enter_text_label(app: AppTest) -> None:
     tab = app.tabs[0]
     markdown_values = [m.value for m in tab.markdown]
-    assert any("② Enter text" in v for v in markdown_values)
+    assert any("② Type or paste your text" in v for v in markdown_values)
 
 
 def test_translate_tab_has_divider(app: AppTest) -> None:
@@ -159,6 +159,32 @@ def test_translate_tab_button_exists(app: AppTest) -> None:
     assert tab.button[0].label == "Translate"
 
 
+def test_translate_tab_source_region_default(app: AppTest) -> None:
+    tab = app.tabs[0]
+    assert tab.radio[0].value == "European"
+
+
+def test_translate_tab_target_region_default(app: AppTest) -> None:
+    tab = app.tabs[0]
+    assert tab.radio[1].value == "European"
+
+
+def test_translate_source_region_filters_languages(app: AppTest) -> None:
+    """Switching source region to Asia-Pacific shows Asia-Pacific languages."""
+    app.tabs[0].radio[0].set_value("Asia-Pacific")
+    _rerun_with_mocks(app)
+
+    assert app.tabs[0].selectbox[0].value == "Chinese"
+
+
+def test_translate_target_region_filters_languages(app: AppTest) -> None:
+    """Switching target region to Asia-Pacific shows Asia-Pacific languages."""
+    app.tabs[0].radio[1].set_value("Asia-Pacific")
+    _rerun_with_mocks(app)
+
+    assert app.tabs[0].selectbox[1].value == "Chinese"
+
+
 # -- Translate tab: interactions ----------------------------------------------
 
 
@@ -170,10 +196,10 @@ def test_translate_success_shows_result() -> None:
 
 
 def test_translate_success_shows_result_label() -> None:
-    """After a successful translation the '③ Result' label is shown."""
+    """After a successful translation the '③ Translation' label is shown."""
     at = _run_inference_test(tab_index=0, input_text="Hello", decode_result="Bonjour")
     markdown_values = [m.value for m in at.tabs[0].markdown]
-    assert any("③ Result" in v for v in markdown_values)
+    assert any("③ Translation" in v for v in markdown_values)
 
 
 def test_translate_empty_text_shows_warning(app: AppTest) -> None:
@@ -183,13 +209,12 @@ def test_translate_empty_text_shows_warning(app: AppTest) -> None:
 
     tab = app.tabs[0]
     warning_values = [w.value for w in tab.warning]
-    assert any("Please enter some text" in str(v) for v in warning_values)
+    assert any("Please enter some text first" in str(v) for v in warning_values)
 
 
 def test_translate_same_language_shows_warning(app: AppTest) -> None:
     """Translating when source == target language shows a warning."""
     tab = app.tabs[0]
-    # Set target to English (same as default source)
     tab.selectbox[1].set_value("English")
     tab.text_area[0].set_value("Hello")
     tab.button[0].click()
@@ -197,7 +222,7 @@ def test_translate_same_language_shows_warning(app: AppTest) -> None:
 
     tab = app.tabs[0]
     warning_values = [w.value for w in tab.warning]
-    assert any("same" in str(v) for v in warning_values)
+    assert any("two different languages" in str(v) for v in warning_values)
 
 
 def test_translate_change_source_language(app: AppTest) -> None:
@@ -210,10 +235,10 @@ def test_translate_change_source_language(app: AppTest) -> None:
 
 def test_translate_change_target_language(app: AppTest) -> None:
     """Changing the target language selectbox updates its value."""
-    app.tabs[0].selectbox[1].set_value("Japanese")
+    app.tabs[0].selectbox[1].set_value("Spanish")
     _rerun_with_mocks(app)
 
-    assert app.tabs[0].selectbox[1].value == "Japanese"
+    assert app.tabs[0].selectbox[1].value == "Spanish"
 
 
 # -- Summarize tab: structure -------------------------------------------------

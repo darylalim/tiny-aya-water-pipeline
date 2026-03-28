@@ -304,19 +304,35 @@ except Exception as e:
 translate_tab, summarize_tab = st.tabs(["Translate", "Summarize"])
 
 with translate_tab:
-    st.markdown("**① Choose languages**")
+    st.markdown("**① Pick your languages**")
     col1, col2 = st.columns(2)
     with col1:
-        source_lang = st.selectbox(
-            "Source Language", LANGUAGES, index=LANGUAGES.index("English")
+        source_region = st.radio(
+            "Region",
+            list(LANGUAGE_GROUPS.keys()),
+            horizontal=True,
+            key="source_region",
         )
+        source_languages = LANGUAGE_GROUPS[source_region]
+        source_lang = st.selectbox("Source Language", source_languages)
     with col2:
+        target_region = st.radio(
+            "Region",
+            list(LANGUAGE_GROUPS.keys()),
+            horizontal=True,
+            key="target_region",
+        )
+        target_languages = LANGUAGE_GROUPS[target_region]
         target_lang = st.selectbox(
-            "Target Language", LANGUAGES, index=LANGUAGES.index("French")
+            "Target Language",
+            target_languages,
+            index=target_languages.index("French")
+            if "French" in target_languages
+            else 0,
         )
 
     st.divider()
-    st.markdown("**② Enter text**")
+    st.markdown("**② Type or paste your text**")
     translate_input = st.text_area(
         "Text to translate",
         placeholder="e.g. The weather is nice today",
@@ -325,9 +341,9 @@ with translate_tab:
 
     if st.button("Translate", disabled=not model_loaded):
         if not translate_input.strip():
-            st.warning("Please enter some text to translate.")
+            st.warning("Please enter some text first.")
         elif source_lang == target_lang:
-            st.warning("Source and target language are the same.")
+            st.warning("Please pick two different languages.")
         else:
             with st.spinner("Translating..."):
                 result = translate_text(
@@ -338,7 +354,7 @@ with translate_tab:
                     tokenizer,
                 )
             st.divider()
-            st.markdown("**③ Result**")
+            st.markdown("**③ Translation**")
             st.success(result)
 
 with summarize_tab:
