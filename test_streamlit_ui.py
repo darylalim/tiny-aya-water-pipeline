@@ -142,7 +142,7 @@ def test_swap_moves_output_to_input() -> None:
     # Input should now contain the previous output
     assert at.text_area[0].value == "Bonjour"
     # Output should be cleared
-    assert at.text_area[1].value == ""
+    assert at.code[0].value == ""
 
 
 # -- Text panels ---------------------------------------------------------------
@@ -152,8 +152,8 @@ def test_input_text_area_placeholder(app: AppTest) -> None:
     assert app.text_area[0].placeholder == "Type or paste your text here..."
 
 
-def test_output_text_area_is_disabled(app: AppTest) -> None:
-    assert app.text_area[1].disabled
+def test_output_uses_code_block(app: AppTest) -> None:
+    assert len(app.code) > 0
 
 
 # -- Translate flow ------------------------------------------------------------
@@ -165,7 +165,7 @@ def test_translate_button_exists(app: AppTest) -> None:
 
 def test_translate_success_shows_result() -> None:
     at = _run_inference_test(input_text="Hello", decode_result="Bonjour")
-    assert at.text_area[1].value == "Bonjour"
+    assert at.code[0].value == "Bonjour"
 
 
 def test_translate_empty_text_shows_warning(app: AppTest) -> None:

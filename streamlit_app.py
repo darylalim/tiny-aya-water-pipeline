@@ -254,13 +254,7 @@ with col_input:
         label_visibility="collapsed",
     )
 with col_output:
-    st.text_area(
-        "Output",
-        value=st.session_state.translate_output,
-        height=200,
-        disabled=True,
-        label_visibility="collapsed",
-    )
+    st.code(st.session_state.translate_output, language=None)
 
 # -- Translate button ---------------------------------------------------------
 
