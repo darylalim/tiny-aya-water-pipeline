@@ -1,6 +1,6 @@
 ## Project
 
-Streamlit app for translating and summarizing text across 43 European and Asia-Pacific languages using CohereLabs/tiny-aya-water (3.35B parameter multilingual model) with local HuggingFace Transformers inference.
+Streamlit app for translating text across 43 European and Asia-Pacific languages using CohereLabs/tiny-aya-water (3.35B parameter multilingual model) with local HuggingFace Transformers inference.
 
 ## Stack
 
@@ -29,9 +29,9 @@ uv run ty check streamlit_app.py       # type check
 ## Conventions
 
 - Pure functions are defined above `import streamlit` so they can be imported and tested without Streamlit
-- UI uses `st.tabs` with a compact layout — inline language pickers for Translate, single dropdown for Summarize
+- Side-by-side layout with language bar (`[From] [⇄] [To]`) above two equal text area columns (input + disabled output)
+- Swap button (`⇄`) flips languages and moves output into input via `st.session_state`
 - Language selectboxes use the flat `LANGUAGES` list (43 items) with Streamlit's built-in type-to-search
-- `select_summary_length` auto-determines summary length from input text size (Short < 500 chars, Medium 500-2000, Long > 2000)
 - UI tests use `streamlit.testing.v1.AppTest`; mocks target `transformers` level (not `streamlit_app`) because AppTest runs scripts via `exec()`
 - `translate_text` and `summarize_text` handle both plain tensor and `BatchEncoding` returns from `apply_chat_template`
 - `clean_model_output` is the shared output cleanup function for both tasks
