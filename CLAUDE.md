@@ -29,9 +29,10 @@ uv run ty check streamlit_app.py       # type check
 ## Conventions
 
 - Pure functions are defined above `import streamlit` so they can be imported and tested without Streamlit
-- Side-by-side layout with language bar (`[From] [⇄] [To]`) above two equal text area columns (input + disabled output)
-- Swap button (`⇄`) flips languages and moves output into input via `st.session_state`
-- Language selectboxes use the flat `LANGUAGES` list (43 items) with Streamlit's built-in type-to-search
+- Side-by-side layout with language bar (`[From] [⇄] [To]`) above input text area and `st.code()` output (built-in copy button)
+- Swap button (`⇄`, tertiary type) flips languages and moves output into input via `st.session_state`
+- Language selectboxes use the flat `LANGUAGES` list (43 items) with collapsed labels and Streamlit's built-in type-to-search
+- Translate button uses `type="primary"` for visual prominence
 - UI tests use `streamlit.testing.v1.AppTest`; mocks target `transformers` level (not `streamlit_app`) because AppTest runs scripts via `exec()`
 - `translate_text` handles both plain tensor and `BatchEncoding` returns from `apply_chat_template`
 - `clean_model_output` cleans decoded model output

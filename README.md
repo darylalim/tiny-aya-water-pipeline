@@ -1,10 +1,10 @@
-# Tiny Aya Water
+# Tiny Aya Water Translate
 
 Translate text across 43 languages — all running privately on your computer. Powered by [CohereLabs/tiny-aya-water](https://huggingface.co/CohereLabs/tiny-aya-water).
 
 ## Features
 
-- Side-by-side translation with swap button
+- Side-by-side translation with swap button and built-in copy
 - 43 European and Asia-Pacific languages with type-to-search
 - Auto-detects GPU (NVIDIA/Apple Silicon) or CPU for best performance
 - Local inference — no API key required
