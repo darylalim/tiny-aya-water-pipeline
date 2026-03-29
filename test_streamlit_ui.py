@@ -8,26 +8,13 @@ from streamlit.testing.v1 import AppTest
 
 @pytest.fixture(autouse=True)
 def clear_st_cache() -> None:
-    """Clear Streamlit's @st.cache_resource between tests.
-
-    AppTest shares the Streamlit runtime within a process, so @st.cache_resource
-    entries created by one test persist into the next.  Clearing before each test
-    ensures every test starts with a clean model-loading state.
-    """
+    """Clear Streamlit's @st.cache_resource between tests."""
     st.cache_resource.clear()
 
 
 @pytest.fixture
 def app() -> AppTest:
-    """Create a patched AppTest instance with mocked model loading.
-
-    AppTest runs the script via exec() in the same process, so patches must
-    target the upstream source of the objects the script imports.  load_model()
-    does ``from transformers import AutoModelForCausalLM, AutoTokenizer``
-    inside its body, so patching those names on the real ``transformers``
-    module (approach 3) intercepts the call before any file I/O or network
-    access occurs.
-    """
+    """Create a patched AppTest instance with mocked model loading."""
     mock_tokenizer = MagicMock()
     mock_model = MagicMock()
     mock_model.device = "cpu"
@@ -70,8 +57,6 @@ def _make_inference_mocks(decode_result: str) -> tuple[MagicMock, MagicMock]:
     mock_tokenizer = MagicMock()
     mock_model = MagicMock()
 
-    # Mirrors load_model(): model.to(device).eval()
-    # If that chain changes, this mock chain must be updated to match.
     final_model = mock_model.to.return_value.eval.return_value
     final_model.device = torch.device("cpu")
     final_model.generate.return_value = torch.tensor([[1, 2, 3, 4, 5]])
@@ -82,8 +67,8 @@ def _make_inference_mocks(decode_result: str) -> tuple[MagicMock, MagicMock]:
     return mock_tokenizer, mock_model
 
 
-def _run_inference_test(tab_index: int, input_text: str, decode_result: str) -> AppTest:
-    """Build a fresh AppTest, enter text, click the action button, and return it."""
+def _run_inference_test(input_text: str, decode_result: str) -> AppTest:
+    """Build a fresh AppTest, enter text, click Translate, and return it."""
     mock_tokenizer, mock_model = _make_inference_mocks(decode_result)
     with (
         patch(
@@ -97,129 +82,131 @@ def _run_inference_test(tab_index: int, input_text: str, decode_result: str) -> 
     ):
         at = AppTest.from_file("streamlit_app.py")
         at.run(timeout=60)
-        at.tabs[tab_index].text_area[0].set_value(input_text)
-        at.tabs[tab_index].button[0].click()
+        at.text_area[0].set_value(input_text)
+        at.button("Translate").click()
         at.run(timeout=60)
     return at
 
 
-def test_translate_tab_source_language_default(app: AppTest) -> None:
-    tab = app.tabs[0]
-    source_select = tab.selectbox[0]
-    assert source_select.value == "English"
+# -- Language defaults ---------------------------------------------------------
 
 
-def test_translate_tab_target_language_default(app: AppTest) -> None:
-    tab = app.tabs[0]
-    target_select = tab.selectbox[1]
-    assert target_select.value == "French"
+def test_source_language_default(app: AppTest) -> None:
+    assert app.selectbox[0].value == "English"
 
 
-def test_translate_tab_text_area_placeholder(app: AppTest) -> None:
-    tab = app.tabs[0]
-    text_area = tab.text_area[0]
-    assert text_area.placeholder == "Type or paste your text here..."
+def test_target_language_default(app: AppTest) -> None:
+    assert app.selectbox[1].value == "French"
 
 
-def test_translate_tab_button_exists(app: AppTest) -> None:
-    tab = app.tabs[0]
-    assert tab.button[0].label == "Translate"
+# -- Swap button ---------------------------------------------------------------
+
+
+def test_swap_button_exists(app: AppTest) -> None:
+    assert app.button("⇄") is not None
+
+
+def test_swap_flips_languages(app: AppTest) -> None:
+    app.button("⇄").click()
+    _rerun_with_mocks(app)
+
+    assert app.selectbox[0].value == "French"
+    assert app.selectbox[1].value == "English"
+
+
+def test_swap_moves_output_to_input(app: AppTest) -> None:
+    """After translating, swap should move the output into the input field."""
+    mock_tokenizer, mock_model = _make_inference_mocks("Bonjour")
+    with (
+        patch(
+            "transformers.AutoTokenizer.from_pretrained",
+            return_value=mock_tokenizer,
+        ),
+        patch(
+            "transformers.AutoModelForCausalLM.from_pretrained",
+            return_value=mock_model,
+        ),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+
+        # Translate "Hello" -> "Bonjour"
+        at.text_area[0].set_value("Hello")
+        at.button("Translate").click()
+        at.run(timeout=60)
+
+        # Swap
+        at.button("⇄").click()
+        at.run(timeout=60)
+
+    # Input should now contain the previous output
+    assert at.text_area[0].value == "Bonjour"
+    # Output should be cleared
+    assert at.text_area[1].value == ""
+
+
+# -- Text panels ---------------------------------------------------------------
+
+
+def test_input_text_area_placeholder(app: AppTest) -> None:
+    assert app.text_area[0].placeholder == "Type or paste your text here..."
+
+
+def test_output_text_area_is_disabled(app: AppTest) -> None:
+    assert app.text_area[1].disabled
+
+
+# -- Translate flow ------------------------------------------------------------
+
+
+def test_translate_button_exists(app: AppTest) -> None:
+    assert app.button("Translate") is not None
 
 
 def test_translate_success_shows_result() -> None:
-    """Clicking Translate with valid input shows the translated text."""
-    at = _run_inference_test(tab_index=0, input_text="Hello", decode_result="Bonjour")
-    success_values = [s.value for s in at.tabs[0].success]
-    assert any("Bonjour" in str(v) for v in success_values)
+    at = _run_inference_test(input_text="Hello", decode_result="Bonjour")
+    assert at.text_area[1].value == "Bonjour"
 
 
 def test_translate_empty_text_shows_warning(app: AppTest) -> None:
-    """Clicking Translate with an empty text area shows a warning."""
-    app.tabs[0].button[0].click()
+    app.button("Translate").click()
     _rerun_with_mocks(app)
 
-    tab = app.tabs[0]
-    warning_values = [w.value for w in tab.warning]
+    warning_values = [w.value for w in app.warning]
     assert any("Please enter some text first" in str(v) for v in warning_values)
 
 
 def test_translate_same_language_shows_warning(app: AppTest) -> None:
-    """Translating when source == target language shows a warning."""
-    tab = app.tabs[0]
-    tab.selectbox[1].set_value("English")
-    tab.text_area[0].set_value("Hello")
-    tab.button[0].click()
+    app.selectbox[1].set_value("English")
+    app.text_area[0].set_value("Hello")
+    app.button("Translate").click()
     _rerun_with_mocks(app)
 
-    tab = app.tabs[0]
-    warning_values = [w.value for w in tab.warning]
+    warning_values = [w.value for w in app.warning]
     assert any("two different languages" in str(v) for v in warning_values)
 
 
-def test_translate_change_source_language(app: AppTest) -> None:
-    """Changing the source language selectbox updates its value."""
-    app.tabs[0].selectbox[0].set_value("Spanish")
+# -- Language switching --------------------------------------------------------
+
+
+def test_change_source_language(app: AppTest) -> None:
+    app.selectbox[0].set_value("Spanish")
     _rerun_with_mocks(app)
 
-    assert app.tabs[0].selectbox[0].value == "Spanish"
+    assert app.selectbox[0].value == "Spanish"
 
 
-def test_translate_change_target_language(app: AppTest) -> None:
-    """Changing the target language selectbox updates its value."""
-    app.tabs[0].selectbox[1].set_value("Spanish")
+def test_change_target_language(app: AppTest) -> None:
+    app.selectbox[1].set_value("Spanish")
     _rerun_with_mocks(app)
 
-    assert app.tabs[0].selectbox[1].value == "Spanish"
+    assert app.selectbox[1].value == "Spanish"
 
 
-def test_summarize_tab_output_language_default(app: AppTest) -> None:
-    tab = app.tabs[1]
-    assert tab.selectbox[0].value == "English"
-
-
-def test_summarize_tab_text_area_placeholder(app: AppTest) -> None:
-    tab = app.tabs[1]
-    text_area = tab.text_area[0]
-    assert text_area.placeholder == "Paste an article, email, or paragraph here..."
-
-
-def test_summarize_tab_button_exists(app: AppTest) -> None:
-    tab = app.tabs[1]
-    assert tab.button[0].label == "Summarize"
-
-
-def test_summarize_success_shows_result() -> None:
-    """Clicking Summarize with valid input shows the summarized text."""
-    at = _run_inference_test(
-        tab_index=1, input_text="Some long text.", decode_result="A brief summary."
-    )
-    success_values = [s.value for s in at.tabs[1].success]
-    assert any("A brief summary." in str(v) for v in success_values)
-
-
-def test_summarize_empty_text_shows_warning(app: AppTest) -> None:
-    """Clicking Summarize with an empty text area shows a warning."""
-    app.tabs[1].button[0].click()
-    _rerun_with_mocks(app)
-
-    tab = app.tabs[1]
-    warning_values = [w.value for w in tab.warning]
-    assert any("Please enter some text first" in str(v) for v in warning_values)
-
-
-def test_summarize_change_output_language(app: AppTest) -> None:
-    """Changing the output language selectbox updates its value."""
-    app.tabs[1].selectbox[0].set_value("Spanish")
-    _rerun_with_mocks(app)
-
-    assert app.tabs[1].selectbox[0].value == "Spanish"
-
-
-# -- Model load failure -------------------------------------------------------
+# -- Model load failure --------------------------------------------------------
 
 
 def test_model_load_failure_shows_error() -> None:
-    """When model loading raises an exception, st.error is shown."""
     with (
         patch(
             "transformers.AutoTokenizer.from_pretrained",
@@ -238,7 +225,6 @@ def test_model_load_failure_shows_error() -> None:
 
 
 def test_model_load_failure_disables_translate_button() -> None:
-    """When model loading fails, the Translate button is disabled."""
     with (
         patch(
             "transformers.AutoTokenizer.from_pretrained",
@@ -252,22 +238,4 @@ def test_model_load_failure_disables_translate_button() -> None:
         at = AppTest.from_file("streamlit_app.py")
         at.run(timeout=60)
 
-    assert at.tabs[0].button[0].disabled
-
-
-def test_model_load_failure_disables_summarize_button() -> None:
-    """When model loading fails, the Summarize button is disabled."""
-    with (
-        patch(
-            "transformers.AutoTokenizer.from_pretrained",
-            side_effect=RuntimeError("download failed"),
-        ),
-        patch(
-            "transformers.AutoModelForCausalLM.from_pretrained",
-            return_value=MagicMock(),
-        ),
-    ):
-        at = AppTest.from_file("streamlit_app.py")
-        at.run(timeout=60)
-
-    assert at.tabs[1].button[0].disabled
+    assert at.button("Translate").disabled
