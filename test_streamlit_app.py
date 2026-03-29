@@ -5,7 +5,6 @@ import torch
 
 import streamlit_app
 from streamlit_app import (
-    LANGUAGE_GROUPS,
     LANGUAGES,
     build_summarization_prompt,
     build_translation_prompt,
@@ -115,26 +114,6 @@ def test_languages_list_contains_english() -> None:
 
 def test_languages_list_contains_japanese() -> None:
     assert "Japanese" in LANGUAGES
-
-
-# -- LANGUAGE_GROUPS -----------------------------------------------------------
-
-
-def test_language_groups_has_two_regions() -> None:
-    assert set(LANGUAGE_GROUPS.keys()) == {"European", "Asia-Pacific"}
-
-
-def test_language_groups_european_has_31_languages() -> None:
-    assert len(LANGUAGE_GROUPS["European"]) == 31
-
-
-def test_language_groups_asia_pacific_has_12_languages() -> None:
-    assert len(LANGUAGE_GROUPS["Asia-Pacific"]) == 12
-
-
-def test_language_groups_covers_all_languages() -> None:
-    all_grouped = LANGUAGE_GROUPS["European"] + LANGUAGE_GROUPS["Asia-Pacific"]
-    assert sorted(all_grouped) == sorted(LANGUAGES)
 
 
 # -- build_translation_prompt --------------------------------------------------

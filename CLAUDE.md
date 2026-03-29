@@ -29,7 +29,6 @@ uv run ty check streamlit_app.py       # type check
 ## Conventions
 
 - Pure functions are defined above `import streamlit` so they can be imported and tested without Streamlit
-- `LANGUAGE_GROUPS` groups the 43 languages by region (European, Asia-Pacific); not used by UI but kept for potential future use
 - UI uses `st.tabs` with a compact layout — inline language pickers for Translate, single dropdown for Summarize
 - Language selectboxes use the flat `LANGUAGES` list (43 items) with Streamlit's built-in type-to-search
 - `select_summary_length` auto-determines summary length from input text size (Short < 500 chars, Medium 500-2000, Long > 2000)

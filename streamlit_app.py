@@ -72,56 +72,6 @@ LANGUAGES: list[str] = [
     "Burmese",
 ]
 
-LANGUAGE_GROUPS: dict[str, list[str]] = {
-    "European": [
-        "English",
-        "Dutch",
-        "French",
-        "Italian",
-        "Portuguese",
-        "Romanian",
-        "Spanish",
-        "Czech",
-        "Polish",
-        "Ukrainian",
-        "Russian",
-        "Greek",
-        "German",
-        "Danish",
-        "Swedish",
-        "Norwegian",
-        "Catalan",
-        "Galician",
-        "Welsh",
-        "Irish",
-        "Basque",
-        "Croatian",
-        "Latvian",
-        "Lithuanian",
-        "Slovak",
-        "Slovenian",
-        "Estonian",
-        "Finnish",
-        "Hungarian",
-        "Serbian",
-        "Bulgarian",
-    ],
-    "Asia-Pacific": [
-        "Chinese",
-        "Japanese",
-        "Korean",
-        "Tagalog",
-        "Malay",
-        "Indonesian",
-        "Javanese",
-        "Khmer",
-        "Thai",
-        "Lao",
-        "Vietnamese",
-        "Burmese",
-    ],
-}
-
 
 # -- Pure functions -----------------------------------------------------------
 
@@ -289,10 +239,7 @@ def load_model() -> tuple:
 # -- Main page ----------------------------------------------------------------
 
 st.title("Tiny Aya Water")
-st.markdown(
-    "Translate and summarize text across 43 languages — all running privately on "
-    "your computer."
-)
+st.markdown("Translate and summarize text — running privately on your computer.")
 
 # -- Model loading ------------------------------------------------------------
 
@@ -314,9 +261,8 @@ with translate_tab:
     with col1:
         source_lang = st.selectbox("From", LANGUAGES)
     with col2:
-        st.markdown(
-            "<p style='text-align:center;padding-top:2rem;font-size:1.2rem'>&rarr;</p>",
-            unsafe_allow_html=True,
+        st.html(
+            "<p style='text-align:center;font-size:1.2rem;padding-top:2rem'>&rarr;</p>"
         )
     with col3:
         target_lang = st.selectbox("To", LANGUAGES, index=LANGUAGES.index("French"))
