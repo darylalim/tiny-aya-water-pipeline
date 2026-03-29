@@ -103,26 +103,6 @@ def _run_inference_test(tab_index: int, input_text: str, decode_result: str) -> 
     return at
 
 
-# -- Translate tab: structure -------------------------------------------------
-
-
-def test_translate_tab_has_choose_languages_label(app: AppTest) -> None:
-    tab = app.tabs[0]
-    markdown_values = [m.value for m in tab.markdown]
-    assert any("① Pick your languages" in v for v in markdown_values)
-
-
-def test_translate_tab_has_enter_text_label(app: AppTest) -> None:
-    tab = app.tabs[0]
-    markdown_values = [m.value for m in tab.markdown]
-    assert any("② Type or paste your text" in v for v in markdown_values)
-
-
-def test_translate_tab_has_divider(app: AppTest) -> None:
-    tab = app.tabs[0]
-    assert len(tab.divider) >= 1
-
-
 def test_translate_tab_source_language_default(app: AppTest) -> None:
     tab = app.tabs[0]
     source_select = tab.selectbox[0]
@@ -138,7 +118,7 @@ def test_translate_tab_target_language_default(app: AppTest) -> None:
 def test_translate_tab_text_area_placeholder(app: AppTest) -> None:
     tab = app.tabs[0]
     text_area = tab.text_area[0]
-    assert text_area.placeholder == "e.g. The weather is nice today"
+    assert text_area.placeholder == "Type or paste your text here..."
 
 
 def test_translate_tab_button_exists(app: AppTest) -> None:
@@ -146,47 +126,11 @@ def test_translate_tab_button_exists(app: AppTest) -> None:
     assert tab.button[0].label == "Translate"
 
 
-def test_translate_tab_source_region_default(app: AppTest) -> None:
-    tab = app.tabs[0]
-    assert tab.radio[0].value == "European"
-
-
-def test_translate_tab_target_region_default(app: AppTest) -> None:
-    tab = app.tabs[0]
-    assert tab.radio[1].value == "European"
-
-
-def test_translate_source_region_filters_languages(app: AppTest) -> None:
-    """Switching source region to Asia-Pacific shows Asia-Pacific languages."""
-    app.tabs[0].radio[0].set_value("Asia-Pacific")
-    _rerun_with_mocks(app)
-
-    assert app.tabs[0].selectbox[0].value == "Chinese"
-
-
-def test_translate_target_region_filters_languages(app: AppTest) -> None:
-    """Switching target region to Asia-Pacific shows Asia-Pacific languages."""
-    app.tabs[0].radio[1].set_value("Asia-Pacific")
-    _rerun_with_mocks(app)
-
-    assert app.tabs[0].selectbox[1].value == "Chinese"
-
-
-# -- Translate tab: interactions ----------------------------------------------
-
-
 def test_translate_success_shows_result() -> None:
     """Clicking Translate with valid input shows the translated text."""
     at = _run_inference_test(tab_index=0, input_text="Hello", decode_result="Bonjour")
     success_values = [s.value for s in at.tabs[0].success]
     assert any("Bonjour" in str(v) for v in success_values)
-
-
-def test_translate_success_shows_result_label() -> None:
-    """After a successful translation the '③ Translation' label is shown."""
-    at = _run_inference_test(tab_index=0, input_text="Hello", decode_result="Bonjour")
-    markdown_values = [m.value for m in at.tabs[0].markdown]
-    assert any("③ Translation" in v for v in markdown_values)
 
 
 def test_translate_empty_text_shows_warning(app: AppTest) -> None:

@@ -310,38 +310,20 @@ except Exception as e:
 translate_tab, summarize_tab = st.tabs(["Translate", "Summarize"])
 
 with translate_tab:
-    st.markdown("**① Pick your languages**")
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns([5, 1, 5])
     with col1:
-        source_region = st.radio(
-            "Region",
-            list(LANGUAGE_GROUPS.keys()),
-            horizontal=True,
-            key="source_region",
-        )
-        source_languages = LANGUAGE_GROUPS[source_region]
-        source_lang = st.selectbox("Source Language", source_languages)
+        source_lang = st.selectbox("From", LANGUAGES)
     with col2:
-        target_region = st.radio(
-            "Region",
-            list(LANGUAGE_GROUPS.keys()),
-            horizontal=True,
-            key="target_region",
+        st.markdown(
+            "<p style='text-align:center;padding-top:2rem;font-size:1.2rem'>&rarr;</p>",
+            unsafe_allow_html=True,
         )
-        target_languages = LANGUAGE_GROUPS[target_region]
-        target_lang = st.selectbox(
-            "Target Language",
-            target_languages,
-            index=target_languages.index("French")
-            if "French" in target_languages
-            else 0,
-        )
+    with col3:
+        target_lang = st.selectbox("To", LANGUAGES, index=LANGUAGES.index("French"))
 
-    st.divider()
-    st.markdown("**② Type or paste your text**")
     translate_input = st.text_area(
         "Text to translate",
-        placeholder="e.g. The weather is nice today",
+        placeholder="Type or paste your text here...",
         height=150,
     )
 
@@ -359,8 +341,6 @@ with translate_tab:
                     model,
                     tokenizer,
                 )
-            st.divider()
-            st.markdown("**③ Translation**")
             st.success(result)
 
 with summarize_tab:
