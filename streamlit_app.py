@@ -224,7 +224,7 @@ def swap_languages() -> None:
 
 # -- Language bar -------------------------------------------------------------
 
-col_from, col_swap, col_to = st.columns([5, 1, 5])
+col_from, col_swap, col_to = st.columns([10, 1, 10], vertical_alignment="center")
 with col_from:
     source_lang = st.selectbox(
         "From",
@@ -233,7 +233,13 @@ with col_from:
         label_visibility="collapsed",
     )
 with col_swap:
-    st.button("⇄", key="⇄", on_click=swap_languages)
+    st.button(
+        "⇄",
+        key="⇄",
+        on_click=swap_languages,
+        use_container_width=True,
+        type="tertiary",
+    )
 with col_to:
     target_lang = st.selectbox(
         "To",
