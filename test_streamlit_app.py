@@ -1,19 +1,14 @@
 from unittest.mock import MagicMock, patch
 
-import pytest
 import torch
 
 import streamlit_app
 from streamlit_app import (
     LANGUAGES,
-    build_summarization_prompt,
     build_translation_prompt,
     clean_model_output,
     detect_device,
-    get_summary_config,
     select_dtype,
-    select_summary_length,
-    summarize_text,
     translate_text,
 )
 
@@ -164,95 +159,6 @@ def test_clean_model_output_preserves_inner_whitespace() -> None:
     assert clean_model_output("  Hello   world  ") == "Hello   world"
 
 
-# -- get_summary_config --------------------------------------------------------
-
-
-def test_get_summary_config_short() -> None:
-    result = get_summary_config("Short")
-    assert "brief summary" in result
-    assert "1-2 sentences" in result
-
-
-def test_get_summary_config_medium() -> None:
-    result = get_summary_config("Medium")
-    assert "short paragraph" in result
-
-
-def test_get_summary_config_long() -> None:
-    result = get_summary_config("Long")
-    assert "detailed summary" in result
-
-
-def test_get_summary_config_invalid_raises() -> None:
-    with pytest.raises(ValueError):
-        get_summary_config("Extra Long")
-
-
-# -- select_summary_length -----------------------------------------------------
-
-
-def test_select_summary_length_short() -> None:
-    assert select_summary_length("Hello") == "Short"
-
-
-def test_select_summary_length_short_boundary() -> None:
-    assert select_summary_length("x" * 499) == "Short"
-
-
-def test_select_summary_length_medium_boundary() -> None:
-    assert select_summary_length("x" * 500) == "Medium"
-
-
-def test_select_summary_length_medium() -> None:
-    assert select_summary_length("x" * 1000) == "Medium"
-
-
-def test_select_summary_length_medium_upper_boundary() -> None:
-    assert select_summary_length("x" * 2000) == "Medium"
-
-
-def test_select_summary_length_long_boundary() -> None:
-    assert select_summary_length("x" * 2001) == "Long"
-
-
-def test_select_summary_length_long() -> None:
-    assert select_summary_length("x" * 5000) == "Long"
-
-
-# -- build_summarization_prompt ------------------------------------------------
-
-
-def test_build_summarization_prompt_returns_single_message() -> None:
-    result = build_summarization_prompt("Some long text here.", "Short", "English")
-    assert len(result) == 1
-    assert result[0]["role"] == "user"
-
-
-def test_build_summarization_prompt_contains_target_language() -> None:
-    result = build_summarization_prompt("Some text.", "Medium", "French")
-    content = result[0]["content"]
-    assert "French" in content
-
-
-def test_build_summarization_prompt_contains_input_text() -> None:
-    result = build_summarization_prompt("The quick brown fox.", "Short", "English")
-    content = result[0]["content"]
-    assert "The quick brown fox." in content
-
-
-def test_build_summarization_prompt_includes_summarize_instruction() -> None:
-    result = build_summarization_prompt("Some text.", "Short", "English")
-    content = result[0]["content"]
-    assert "summar" in content.lower()
-
-
-def test_build_summarization_prompt_includes_length_wording() -> None:
-    result = build_summarization_prompt("Some text.", "Short", "English")
-    content = result[0]["content"]
-    assert "brief summary" in content
-    assert "1-2 sentences" in content
-
-
 # -- translate_text ------------------------------------------------------------
 
 
@@ -392,145 +298,6 @@ def test_translate_text_passes_prompt_to_tokenizer() -> None:
     assert "Hello" in messages[0]["content"]
 
 
-# -- summarize_text ------------------------------------------------------------
-
-
-def test_summarize_text_plain_tensor_path() -> None:
-    """Plain tensor path: apply_chat_template returns a tensor directly."""
-    mock_tokenizer = MagicMock()
-    mock_model = MagicMock()
-    mock_model.device = torch.device("cpu")
-
-    prompt_ids = torch.tensor([[1, 2, 3]])
-    mock_tokenizer.apply_chat_template.return_value = prompt_ids
-    mock_model.generate.return_value = torch.tensor([[1, 2, 3, 4]])
-    mock_tokenizer.decode.return_value = "A brief summary."
-
-    summarize_text(
-        text="Some long text to summarize.",
-        target_lang="English",
-        summary_length="Short",
-        model=mock_model,
-        tokenizer=mock_tokenizer,
-        temperature=0.1,
-        max_tokens=700,
-    )
-
-    input_ids = mock_model.generate.call_args[0][0]
-    assert input_ids.device == torch.device("cpu")
-    assert mock_model.generate.call_args[1]["attention_mask"] is None
-
-
-def test_summarize_text_handles_batch_encoding() -> None:
-    """BatchEncoding path: apply_chat_template returns a dict-like object."""
-    mock_tokenizer = MagicMock()
-    mock_model = MagicMock()
-    mock_model.device = torch.device("cpu")
-
-    prompt_ids = torch.tensor([[1, 2, 3]])
-    attention = torch.tensor([[1, 1, 1]])
-    batch_encoding = {"input_ids": prompt_ids, "attention_mask": attention}
-    mock_tokenizer.apply_chat_template.return_value = batch_encoding
-
-    mock_model.generate.return_value = torch.tensor([[1, 2, 3, 4, 5]])
-    mock_tokenizer.decode.return_value = "A brief summary."
-
-    result = summarize_text(
-        text="Some long text to summarize.",
-        target_lang="English",
-        summary_length="Short",
-        model=mock_model,
-        tokenizer=mock_tokenizer,
-        temperature=0.1,
-        max_tokens=700,
-    )
-
-    assert result == "A brief summary."
-    input_ids = mock_model.generate.call_args[0][0]
-    assert input_ids.device == torch.device("cpu")
-    mask = mock_model.generate.call_args[1]["attention_mask"]
-    assert mask.device == torch.device("cpu")
-    assert torch.equal(mask, attention)
-
-
-def test_summarize_text_returns_cleaned_string() -> None:
-    mock_tokenizer = MagicMock()
-    mock_model = MagicMock()
-    mock_model.device = torch.device("cpu")
-
-    prompt_ids = torch.tensor([[1, 2, 3]])
-    mock_tokenizer.apply_chat_template.return_value = prompt_ids
-    mock_model.generate.return_value = torch.tensor([[1, 2, 3, 4, 5]])
-    mock_tokenizer.decode.return_value = "  A brief summary.  "
-
-    result = summarize_text(
-        text="Some long text.",
-        target_lang="English",
-        summary_length="Short",
-        model=mock_model,
-        tokenizer=mock_tokenizer,
-        temperature=0.1,
-        max_tokens=700,
-    )
-    assert result == "A brief summary."
-
-
-def test_summarize_text_calls_generate_with_correct_params() -> None:
-    mock_tokenizer = MagicMock()
-    mock_model = MagicMock()
-    mock_model.device = torch.device("cpu")
-
-    prompt_ids = torch.tensor([[1, 2, 3]])
-    mock_tokenizer.apply_chat_template.return_value = prompt_ids
-    mock_model.generate.return_value = torch.tensor([[1, 2, 3, 4, 5]])
-    mock_tokenizer.decode.return_value = "Summary."
-
-    summarize_text(
-        text="Some text.",
-        target_lang="French",
-        summary_length="Medium",
-        model=mock_model,
-        tokenizer=mock_tokenizer,
-        temperature=0.3,
-        max_tokens=500,
-    )
-
-    mock_model.generate.assert_called_once()
-    call_kwargs = mock_model.generate.call_args[1]
-    assert call_kwargs["max_new_tokens"] == 500
-    assert call_kwargs["temperature"] == 0.3
-    assert call_kwargs["do_sample"] is True
-    assert call_kwargs["top_p"] == streamlit_app.TOP_P
-
-
-def test_summarize_text_passes_prompt_to_tokenizer() -> None:
-    mock_tokenizer = MagicMock()
-    mock_model = MagicMock()
-    mock_model.device = torch.device("cpu")
-
-    prompt_ids = torch.tensor([[1, 2, 3]])
-    mock_tokenizer.apply_chat_template.return_value = prompt_ids
-    mock_model.generate.return_value = torch.tensor([[1, 2, 3, 4]])
-    mock_tokenizer.decode.return_value = "Summary."
-
-    summarize_text(
-        text="Some long text.",
-        target_lang="French",
-        summary_length="Short",
-        model=mock_model,
-        tokenizer=mock_tokenizer,
-        temperature=0.1,
-        max_tokens=700,
-    )
-
-    call_args = mock_tokenizer.apply_chat_template.call_args
-    messages = call_args[0][0]
-    assert len(messages) == 1
-    assert "French" in messages[0]["content"]
-    assert "Some long text." in messages[0]["content"]
-    assert "summar" in messages[0]["content"].lower()
-
-
 # -- default parameters -------------------------------------------------------
 
 
@@ -549,30 +316,6 @@ def test_translate_text_uses_default_params() -> None:
         text="Hello",
         source_lang="English",
         target_lang="French",
-        model=mock_model,
-        tokenizer=mock_tokenizer,
-    )
-
-    call_kwargs = mock_model.generate.call_args[1]
-    assert call_kwargs["temperature"] == streamlit_app.DEFAULT_TEMPERATURE
-    assert call_kwargs["max_new_tokens"] == streamlit_app.DEFAULT_MAX_TOKENS
-
-
-def test_summarize_text_uses_default_params() -> None:
-    """When temperature/max_tokens are omitted, function defaults apply."""
-    mock_tokenizer = MagicMock()
-    mock_model = MagicMock()
-    mock_model.device = torch.device("cpu")
-
-    prompt_ids = torch.tensor([[1, 2, 3]])
-    mock_tokenizer.apply_chat_template.return_value = prompt_ids
-    mock_model.generate.return_value = torch.tensor([[1, 2, 3, 4]])
-    mock_tokenizer.decode.return_value = "Summary."
-
-    summarize_text(
-        text="Some long text.",
-        target_lang="English",
-        summary_length="Short",
         model=mock_model,
         tokenizer=mock_tokenizer,
     )
