@@ -272,6 +272,11 @@ def test_copy_button_disabled_when_output_empty(app: AppTest) -> None:
     assert app.button("⧉").disabled
 
 
+def test_copy_button_enabled_when_output_present() -> None:
+    at = _run_inference_test(input_text="Hello", decode_result="Bonjour")
+    assert not at.button("⧉").disabled
+
+
 # -- Model load failure --------------------------------------------------------
 
 

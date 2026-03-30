@@ -32,7 +32,8 @@ uv run ty check streamlit_app.py       # type check
 - Side-by-side layout with language bar (`[From] [⇄] [To]`) above input text area and disabled `st.text_area()` output with "Translation" placeholder
 - Swap button (`⇄`, tertiary type) flips languages and moves output into input via `st.session_state`
 - Language selectboxes use the flat `LANGUAGES` list (43 items) with collapsed labels and Streamlit's built-in type-to-search
-- Translate button uses `type="primary"` for visual prominence
+- Translate button uses `type="primary"` for visual prominence; renders before text panels (Streamlit session state constraint)
+- Clear button (`✕`, tertiary) and character count caption below input; copy button (`⧉`, tertiary) below output uses `st.html()` JS clipboard injection
 - UI tests use `streamlit.testing.v1.AppTest`; mocks target `transformers` level (not `streamlit_app`) because AppTest runs scripts via `exec()`
 - `translate_text` handles both plain tensor and `BatchEncoding` returns from `apply_chat_template`
 - `clean_model_output` cleans decoded model output
