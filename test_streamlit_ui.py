@@ -261,6 +261,17 @@ def test_clear_button_clears_input_and_output() -> None:
     assert at.text_area[1].value == ""
 
 
+# -- Copy button ---------------------------------------------------------------
+
+
+def test_copy_button_exists(app: AppTest) -> None:
+    assert app.button("⧉") is not None
+
+
+def test_copy_button_disabled_when_output_empty(app: AppTest) -> None:
+    assert app.button("⧉").disabled
+
+
 # -- Model load failure --------------------------------------------------------
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -308,3 +309,9 @@ with col_output:
         key="translate_output",
         label_visibility="collapsed",
     )
+    _, sub_copy = st.columns([5, 1])
+    with sub_copy:
+        output_has_text = bool(st.session_state.translate_output.strip())
+        if st.button("⧉", key="⧉", type="tertiary", disabled=not output_has_text):
+            js_text = json.dumps(st.session_state.translate_output)
+            st.html(f"<script>navigator.clipboard.writeText({js_text});</script>")
