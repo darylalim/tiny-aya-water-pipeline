@@ -222,6 +222,12 @@ def swap_languages() -> None:
     st.session_state.translate_output = ""
 
 
+def clear_input() -> None:
+    """Clear the input and output text."""
+    st.session_state.translate_input = ""
+    st.session_state.translate_output = ""
+
+
 # -- Language bar -------------------------------------------------------------
 
 col_from, col_swap, col_to = st.columns([10, 1, 10], vertical_alignment="center")
@@ -282,7 +288,17 @@ with col_input:
         key="translate_input",
         label_visibility="collapsed",
     )
-    st.caption(f"{len(translate_input):,} / 5,000")
+    sub_clear, sub_count = st.columns(2)
+    with sub_clear:
+        st.button(
+            "✕",
+            key="✕",
+            on_click=clear_input,
+            disabled=not translate_input.strip(),
+            type="tertiary",
+        )
+    with sub_count:
+        st.caption(f"{len(translate_input):,} / 5,000")
 with col_output:
     st.text_area(
         "Output",

@@ -221,6 +221,46 @@ def test_character_count_updates(app: AppTest) -> None:
     assert any("5 / 5,000" in c.value for c in app.caption)
 
 
+# -- Clear button --------------------------------------------------------------
+
+
+def test_clear_button_exists(app: AppTest) -> None:
+    assert app.button("✕") is not None
+
+
+def test_clear_button_disabled_when_input_empty(app: AppTest) -> None:
+    assert app.button("✕").disabled
+
+
+def test_clear_button_clears_input_and_output() -> None:
+    """After translating, clicking ✕ should clear both panels."""
+    mock_tokenizer, mock_model = _make_inference_mocks("Bonjour")
+    with (
+        patch(
+            "transformers.AutoTokenizer.from_pretrained",
+            return_value=mock_tokenizer,
+        ),
+        patch(
+            "transformers.AutoModelForCausalLM.from_pretrained",
+            return_value=mock_model,
+        ),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+
+        # Translate "Hello" -> "Bonjour"
+        at.text_area[0].set_value("Hello")
+        at.button("Translate").click()
+        at.run(timeout=60)
+
+        # Click clear
+        at.button("✕").click()
+        at.run(timeout=60)
+
+    assert at.text_area[0].value == ""
+    assert at.text_area[1].value == ""
+
+
 # -- Model load failure --------------------------------------------------------
 
 
