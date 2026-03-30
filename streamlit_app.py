@@ -257,14 +257,14 @@ with col_to:
 
 # -- Translate button (logic runs before panels to allow state update) --------
 
-_translate_warning: str | None = None
+warning_slot = st.container()
 
 if st.button("Translate", key="Translate", disabled=not model_loaded, type="primary"):
     _current_input = st.session_state.translate_input
     if not _current_input.strip():
-        _translate_warning = "Please enter some text first."
+        warning_slot.warning("Please enter some text first.")
     elif source_lang == target_lang:
-        _translate_warning = "Please pick two different languages."
+        warning_slot.warning("Please pick two different languages.")
     else:
         with st.spinner("Translating..."):
             result = translate_text(
@@ -276,9 +276,6 @@ if st.button("Translate", key="Translate", disabled=not model_loaded, type="prim
             )
         st.session_state.translate_output = result
 
-if _translate_warning:
-    st.warning(_translate_warning)
-
 # -- Side-by-side text panels -------------------------------------------------
 
 col_input, col_output = st.columns(2)
@@ -286,10 +283,11 @@ with col_input:
     translate_input = st.text_area(
         "Input",
         height=300,
+        max_chars=5000,
         key="translate_input",
         label_visibility="collapsed",
     )
-    sub_clear, sub_count = st.columns(2)
+    sub_clear, _, sub_count = st.columns([1, 3, 2])
     with sub_clear:
         st.button(
             "✕",
@@ -314,4 +312,18 @@ with col_output:
         output_has_text = bool(st.session_state.translate_output.strip())
         if st.button("⧉", key="⧉", type="tertiary", disabled=not output_has_text):
             js_text = json.dumps(st.session_state.translate_output)
-            st.html(f"<script>navigator.clipboard.writeText({js_text});</script>")
+            st.html(
+                "<script>"
+                "(async()=>{"
+                "try{await navigator.clipboard.writeText("
+                f"{js_text}"
+                ")}catch{"
+                "const t=document.createElement('textarea');"
+                f"t.value={js_text};"
+                "t.style.position='fixed';t.style.opacity='0';"
+                "document.body.appendChild(t);t.select();"
+                "document.execCommand('copy');"
+                "document.body.removeChild(t)}"
+                "})()"
+                "</script>"
+            )
