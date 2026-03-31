@@ -211,6 +211,13 @@ if "translate_input" not in st.session_state:
     st.session_state.translate_input = ""
 if "translate_output" not in st.session_state:
     st.session_state.translate_output = ""
+if "_do_translate" not in st.session_state:
+    st.session_state._do_translate = False
+
+
+def request_translate() -> None:
+    """Flag that a translation was requested (processed before widgets)."""
+    st.session_state._do_translate = True
 
 
 def swap_languages() -> None:
@@ -241,8 +248,9 @@ with col_from:
     )
 with col_swap:
     st.button(
-        "⇄",
-        key="⇄",
+        "",
+        key="swap",
+        icon=":material/swap_horiz:",
         on_click=swap_languages,
         use_container_width=True,
         type="tertiary",
@@ -255,22 +263,23 @@ with col_to:
         label_visibility="collapsed",
     )
 
-# -- Translate button (logic runs before panels to allow state update) --------
+# -- Process translation request (callback + flag, before output widget) ------
 
 warning_slot = st.container()
 
-if st.button("Translate", key="Translate", disabled=not model_loaded, type="primary"):
+if st.session_state._do_translate:
+    st.session_state._do_translate = False
     _current_input = st.session_state.translate_input
     if not _current_input.strip():
         warning_slot.warning("Please enter some text first.")
-    elif source_lang == target_lang:
+    elif st.session_state.source_lang == st.session_state.target_lang:
         warning_slot.warning("Please pick two different languages.")
     else:
         with st.spinner("Translating..."):
             result = translate_text(
                 _current_input,
-                source_lang,
-                target_lang,
+                st.session_state.source_lang,
+                st.session_state.target_lang,
                 model,
                 tokenizer,
             )
@@ -287,17 +296,6 @@ with col_input:
         key="translate_input",
         label_visibility="collapsed",
     )
-    sub_clear, _, sub_count = st.columns([1, 3, 2])
-    with sub_clear:
-        st.button(
-            "✕",
-            key="✕",
-            on_click=clear_input,
-            disabled=not translate_input.strip(),
-            type="tertiary",
-        )
-    with sub_count:
-        st.caption(f"{len(translate_input):,} / 5,000")
 with col_output:
     st.text_area(
         "Output",
@@ -307,23 +305,64 @@ with col_output:
         key="translate_output",
         label_visibility="collapsed",
     )
-    _, sub_copy = st.columns([5, 1])
-    with sub_copy:
-        output_has_text = bool(st.session_state.translate_output.strip())
-        if st.button("⧉", key="⧉", type="tertiary", disabled=not output_has_text):
-            js_text = json.dumps(st.session_state.translate_output)
-            st.html(
-                "<script>"
-                "(async()=>{"
-                "try{await navigator.clipboard.writeText("
-                f"{js_text}"
-                ")}catch{"
-                "const t=document.createElement('textarea');"
-                f"t.value={js_text};"
-                "t.style.position='fixed';t.style.opacity='0';"
-                "document.body.appendChild(t);t.select();"
-                "document.execCommand('copy');"
-                "document.body.removeChild(t)}"
-                "})()"
-                "</script>"
-            )
+
+# -- Controls row -------------------------------------------------------------
+
+# Pre-reserved container so copy button's st.html() doesn't shift the controls row
+clipboard_slot = st.container()
+sub_translate, sub_clear, _, sub_copy, sub_download = st.columns(
+    [6, 1, 25, 1, 1], vertical_alignment="center", gap="small"
+)
+with sub_translate:
+    st.button(
+        "Translate",
+        key="Translate",
+        on_click=request_translate,
+        disabled=not model_loaded,
+        type="primary",
+    )
+with sub_clear:
+    st.button(
+        "",
+        key="clear",
+        icon=":material/close:",
+        on_click=clear_input,
+        disabled=not translate_input.strip(),
+        type="tertiary",
+    )
+with sub_copy:
+    output_has_text = bool(st.session_state.translate_output.strip())
+    if st.button(
+        "",
+        key="copy",
+        icon=":material/content_copy:",
+        type="tertiary",
+        disabled=not output_has_text,
+    ):
+        js_text = json.dumps(st.session_state.translate_output)
+        clipboard_slot.html(
+            "<script>"
+            "(async()=>{"
+            "try{await navigator.clipboard.writeText("
+            f"{js_text}"
+            ")}catch{"
+            "const t=document.createElement('textarea');"
+            f"t.value={js_text};"
+            "t.style.position='fixed';t.style.opacity='0';"
+            "document.body.appendChild(t);t.select();"
+            "document.execCommand('copy');"
+            "document.body.removeChild(t)}"
+            "})()"
+            "</script>"
+        )
+with sub_download:
+    st.download_button(
+        "",
+        key="download",
+        icon=":material/download:",
+        data=st.session_state.translate_output or " ",
+        file_name="translation.txt",
+        mime="text/plain",
+        disabled=not output_has_text,
+        type="tertiary",
+    )

@@ -103,11 +103,11 @@ def test_target_language_default(app: AppTest) -> None:
 
 
 def test_swap_button_exists(app: AppTest) -> None:
-    assert app.button("⇄") is not None
+    assert app.button("swap") is not None
 
 
 def test_swap_flips_languages(app: AppTest) -> None:
-    app.button("⇄").click()
+    app.button("swap").click()
     _rerun_with_mocks(app)
 
     assert app.selectbox[0].value == "French"
@@ -136,7 +136,7 @@ def test_swap_moves_output_to_input() -> None:
         at.run(timeout=60)
 
         # Swap
-        at.button("⇄").click()
+        at.button("swap").click()
         at.run(timeout=60)
 
     # Input should now contain the previous output
@@ -165,6 +165,10 @@ def test_output_text_area_placeholder(app: AppTest) -> None:
 
 def test_translate_button_exists(app: AppTest) -> None:
     assert app.button("Translate") is not None
+
+
+def test_translate_button_enabled_when_model_loaded(app: AppTest) -> None:
+    assert not app.button("Translate").disabled
 
 
 def test_translate_success_shows_result() -> None:
@@ -207,7 +211,7 @@ def test_change_target_language(app: AppTest) -> None:
     assert app.selectbox[1].value == "Spanish"
 
 
-# -- Character count -----------------------------------------------------------
+# -- Input constraints ---------------------------------------------------------
 
 
 def test_input_max_chars_enforced(app: AppTest) -> None:
@@ -217,30 +221,26 @@ def test_input_max_chars_enforced(app: AppTest) -> None:
     assert len(app.text_area[0].value) <= 5000
 
 
-def test_character_count_shown(app: AppTest) -> None:
-    assert any("0 / 5,000" in c.value for c in app.caption)
-
-
-def test_character_count_updates(app: AppTest) -> None:
-    app.text_area[0].set_value("Hello")
-    _rerun_with_mocks(app)
-
-    assert any("5 / 5,000" in c.value for c in app.caption)
-
-
 # -- Clear button --------------------------------------------------------------
 
 
 def test_clear_button_exists(app: AppTest) -> None:
-    assert app.button("✕") is not None
+    assert app.button("clear") is not None
 
 
 def test_clear_button_disabled_when_input_empty(app: AppTest) -> None:
-    assert app.button("✕").disabled
+    assert app.button("clear").disabled
+
+
+def test_clear_button_enabled_when_input_has_text(app: AppTest) -> None:
+    app.text_area[0].set_value("Hello")
+    _rerun_with_mocks(app)
+
+    assert not app.button("clear").disabled
 
 
 def test_clear_button_clears_input_and_output() -> None:
-    """After translating, clicking ✕ should clear both panels."""
+    """After translating, clicking clear should clear both panels."""
     mock_tokenizer, mock_model = _make_inference_mocks("Bonjour")
     with (
         patch(
@@ -261,7 +261,7 @@ def test_clear_button_clears_input_and_output() -> None:
         at.run(timeout=60)
 
         # Click clear
-        at.button("✕").click()
+        at.button("clear").click()
         at.run(timeout=60)
 
     assert at.text_area[0].value == ""
@@ -272,16 +272,16 @@ def test_clear_button_clears_input_and_output() -> None:
 
 
 def test_copy_button_exists(app: AppTest) -> None:
-    assert app.button("⧉") is not None
+    assert app.button("copy") is not None
 
 
 def test_copy_button_disabled_when_output_empty(app: AppTest) -> None:
-    assert app.button("⧉").disabled
+    assert app.button("copy").disabled
 
 
 def test_copy_button_enabled_when_output_present() -> None:
     at = _run_inference_test(input_text="Hello", decode_result="Bonjour")
-    assert not at.button("⧉").disabled
+    assert not at.button("copy").disabled
 
 
 # -- Model load failure --------------------------------------------------------
