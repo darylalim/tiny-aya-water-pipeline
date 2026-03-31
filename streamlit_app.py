@@ -255,6 +255,7 @@ with col_swap:
         on_click=swap_languages,
         use_container_width=True,
         type="tertiary",
+        help="Swap languages",
     )
 with col_to:
     target_lang = st.selectbox(
@@ -310,6 +311,7 @@ with sub_clear:
         on_click=clear_input,
         disabled=not translate_input.strip(),
         type="tertiary",
+        help="Clear source text",
     )
 with sub_copy:
     output_has_text = bool(st.session_state.translate_output.strip())
@@ -319,6 +321,7 @@ with sub_copy:
         icon=":material/content_copy:",
         type="tertiary",
         disabled=not output_has_text,
+        help="Copy translation",
     ):
         # Use a platform-native CLI to write plain text directly to the
         # system clipboard, bypassing browser iframe clipboard API issues
@@ -349,6 +352,7 @@ with sub_download:
         mime="text/plain",
         disabled=not output_has_text,
         type="tertiary",
+        help="Download translation",
     )
 
 # -- Process translation request (below controls) ----------------------------
