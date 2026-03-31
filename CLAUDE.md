@@ -29,13 +29,13 @@ uv run ty check streamlit_app.py       # type check
 ## Conventions
 
 - Pure functions are defined above `import streamlit` so they can be imported and tested without Streamlit
-- Side-by-side layout with language bar (`[From] [swap] [To]`) above input text area and disabled `st.text_area()` output with "Translation" placeholder
+- Side-by-side layout with language bar (`[From] [swap] [To]`) above input text area and disabled output `st.text_area()` (bound via `value=`, not `key=`) with "Translation" placeholder
 - All utility buttons use Material Icons via the `icon` parameter for consistent styling
 - Swap button (`:material/swap_horiz:`, tertiary) flips languages and moves output into input via `st.session_state`
 - Language selectboxes use the flat `LANGUAGES` list (43 items) with collapsed labels and Streamlit's built-in type-to-search
-- Translate button uses `type="primary"` for visual prominence; uses callback + flag pattern (`request_translate` sets `_do_translate`, processed before output widget) to work around Streamlit session state constraint
+- Translate button uses `type="primary"` for visual prominence; uses callback + flag pattern (`request_translate` sets `_do_translate`, processed after controls row) with `st.rerun()` to update output
 - Controls row below panels: Translate (primary), clear (`:material/close:`, tertiary), copy (`:material/content_copy:`, tertiary), download (`:material/download:`, tertiary)
-- Copy button uses `st.html()` JS clipboard injection rendered into a pre-reserved `clipboard_slot` container to avoid layout shift
+- Copy button uses `st.html()` with `unsafe_allow_javascript=True` and textarea + `document.execCommand('copy')` for plain-text clipboard; rendered into a pre-reserved `clipboard_slot` container to avoid layout shift
 - Download button uses `st.download_button` to save translation as `translation.txt`
 - UI tests use `streamlit.testing.v1.AppTest`; mocks target `transformers` level (not `streamlit_app`) because AppTest runs scripts via `exec()`
 - `translate_text` handles both plain tensor and `BatchEncoding` returns from `apply_chat_template`
