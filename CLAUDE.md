@@ -35,12 +35,14 @@ uv run ty check streamlit_app.py       # type check
 - Language selectboxes use the flat `LANGUAGES` list (43 items) with collapsed labels and Streamlit's built-in type-to-search
 - Translate button uses `type="primary"` for visual prominence; uses callback + flag pattern (`request_translate` sets `_do_translate`, processed after controls row) with `st.rerun()` to update output
 - Controls row below panels: Translate (primary), clear (`:material/close:`, tertiary), copy (`:material/content_copy:`, tertiary), download (`:material/download:`, tertiary)
-- Copy button uses `st.html()` with `unsafe_allow_javascript=True` and textarea + `document.execCommand('copy')` for plain-text clipboard; rendered into a pre-reserved `clipboard_slot` container to avoid layout shift
+- Copy button uses `subprocess` + `/usr/bin/pbcopy` for plain-text clipboard with `st.toast("Translation copied")` on success
+- All utility buttons use `help=` for hover tooltips (Swap languages, Clear source text, Copy translation, Download translation)
 - Download button uses `st.download_button` to save translation as `translation.txt`
 - UI tests use `streamlit.testing.v1.AppTest`; mocks target `transformers` level (not `streamlit_app`) because AppTest runs scripts via `exec()`
 - `translate_text` handles both plain tensor and `BatchEncoding` returns from `apply_chat_template`
 - `clean_model_output` cleans decoded model output
 - Device auto-detected (CUDA > MPS > CPU) with optimal dtype (BF16, FP16, FP32); override via `DEVICE` in `.env`
+- Loading spinner shows detected device: "Loading model on {DEVICE}..."
 - Model loaded once via `@st.cache_resource` with `dtype` (not deprecated `torch_dtype`); inference runs under `torch.inference_mode()`
 - Config loaded from `.env` via python-dotenv with sensible defaults
 - License: CC-BY-NC (non-commercial use only)
