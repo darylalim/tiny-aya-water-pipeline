@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import json
 import os
+import platform
+import subprocess
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -290,8 +291,6 @@ with col_output:
 
 # -- Controls row -------------------------------------------------------------
 
-# Pre-reserved container so copy button's st.html() doesn't shift the controls row
-clipboard_slot = st.container()
 sub_translate, sub_clear, _, sub_copy, sub_download = st.columns(
     [6, 1, 25, 1, 1], vertical_alignment="center", gap="small"
 )
@@ -321,24 +320,25 @@ with sub_copy:
         type="tertiary",
         disabled=not output_has_text,
     ):
-        js_text = json.dumps(st.session_state.translate_output)
-        # Uses deprecated execCommand('copy') because the modern Clipboard API
-        # (navigator.clipboard.writeText) adds HTML to the macOS pasteboard,
-        # causing rich-text formatting when pasting into apps like Apple Notes.
-        clipboard_slot.html(
-            "<script>"
-            "(()=>{"
-            "const t=document.createElement('textarea');"
-            f"t.value={js_text};"
-            "t.style.position='fixed';t.style.opacity='0';"
-            "document.body.appendChild(t);"
-            "t.focus();t.select();"
-            "document.execCommand('copy');"
-            "document.body.removeChild(t)"
-            "})()"
-            "</script>",
-            unsafe_allow_javascript=True,
-        )
+        # Use a platform-native CLI to write plain text directly to the
+        # system clipboard, bypassing browser iframe clipboard API issues
+        # that leak HTML and cause rich-text formatting in rich-text apps.
+        _os = platform.system()
+        if _os == "Darwin":
+            _clip_cmd = ["/usr/bin/pbcopy"]
+        elif _os == "Linux":
+            _clip_cmd = ["xclip", "-selection", "clipboard"]
+        else:
+            _clip_cmd = ["clip"]
+        try:
+            subprocess.run(
+                _clip_cmd,
+                input=st.session_state.translate_output.encode("utf-8"),
+                check=True,
+            )
+            st.toast("Translation copied")
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            st.warning("Could not copy to clipboard.")
 with sub_download:
     st.download_button(
         "",
