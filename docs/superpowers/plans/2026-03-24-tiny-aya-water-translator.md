@@ -35,7 +35,7 @@
 Note: The repo already has a `README.md`. Use `--no-readme` to avoid overwriting it.
 
 ```bash
-cd "/Users/daryl-lim/Library/Mobile Documents/com~apple~CloudDocs/GitHub/tiny-aya-water-pipeline"
+cd "/Users/daryl-lim/Library/Mobile Documents/com~apple~CloudDocs/GitHub/tiny-aya-water-translate"
 uv init --name tiny-aya-water-translator --no-readme
 uv add streamlit transformers torch accelerate pandas python-dotenv
 uv add --dev ruff ty pytest
