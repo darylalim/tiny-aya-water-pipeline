@@ -133,18 +133,19 @@ def translate_text(
 ) -> str:
     """Translate text using the model and return the cleaned result."""
     from mlx_lm import generate
+    from mlx_lm.sample_utils import make_sampler
 
     messages = build_translation_prompt(text, source_lang, target_lang)
     prompt = tokenizer.apply_chat_template(
         messages, tokenize=False, add_generation_prompt=True
     )
+    sampler = make_sampler(temp=temperature, top_p=TOP_P)
     result = generate(
         model,
         tokenizer,
         prompt=prompt,
         max_tokens=max_tokens,
-        temp=temperature,
-        top_p=TOP_P,
+        sampler=sampler,
     )
     return clean_model_output(result)
 

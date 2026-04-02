@@ -110,14 +110,11 @@ def test_translate_text_calls_generate_with_correct_params(
         max_tokens=500,
     )
 
-    mock_generate.assert_called_once_with(
-        mock_model,
-        mock_tokenizer,
-        prompt="formatted prompt",
-        max_tokens=500,
-        temp=0.3,
-        top_p=streamlit_app.TOP_P,
-    )
+    mock_generate.assert_called_once()
+    call_kwargs = mock_generate.call_args.kwargs
+    assert call_kwargs["prompt"] == "formatted prompt"
+    assert call_kwargs["max_tokens"] == 500
+    assert callable(call_kwargs["sampler"])
 
 
 @patch("mlx_lm.generate")
@@ -161,5 +158,5 @@ def test_translate_text_uses_default_params(mock_generate: MagicMock) -> None:
     )
 
     call_kwargs = mock_generate.call_args.kwargs
-    assert call_kwargs["temp"] == streamlit_app.DEFAULT_TEMPERATURE
     assert call_kwargs["max_tokens"] == streamlit_app.DEFAULT_MAX_TOKENS
+    assert callable(call_kwargs["sampler"])
