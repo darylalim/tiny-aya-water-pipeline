@@ -396,6 +396,16 @@ def test_doc_language_independent_from_text_tab(app: AppTest) -> None:
     assert app.selectbox[3].value == "French"
 
 
+def test_text_language_independent_from_doc_tab(app: AppTest) -> None:
+    # Change doc tab language
+    app.selectbox[2].set_value("Spanish")
+    _rerun_with_mocks(app)
+
+    # Text tab languages unchanged
+    assert app.selectbox[0].value == "English"
+    assert app.selectbox[1].value == "French"
+
+
 def test_doc_swap_flips_languages(app: AppTest) -> None:
     app.button("doc_swap").click()
     _rerun_with_mocks(app)

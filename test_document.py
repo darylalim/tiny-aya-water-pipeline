@@ -9,6 +9,7 @@ from pptx import Presentation
 from pptx.util import Inches
 
 from document import (
+    _replace_paragraph_text,
     extract_segments_docx,
     extract_segments_pdf,
     extract_segments_pptx,
@@ -83,6 +84,39 @@ def _make_pdf(texts: list[str]) -> bytes:
     return buf.getvalue()
 
 
+# -- _replace_paragraph_text ----------------------------------------------------
+
+
+def test_replace_paragraph_text_with_runs() -> None:
+    """Multi-run paragraph: first run gets new text, others are cleared."""
+    doc = Document()
+    para = doc.add_paragraph()
+    para.add_run("Hello ")
+    para.add_run("World")
+    _replace_paragraph_text(para, "Bonjour")
+    assert para.runs[0].text == "Bonjour"
+    assert para.runs[1].text == ""
+
+
+def test_replace_paragraph_text_no_runs_with_text() -> None:
+    """Paragraph with no runs gets a new run when replacement is non-empty."""
+    doc = Document()
+    para = doc.add_paragraph()
+    assert len(para.runs) == 0
+    _replace_paragraph_text(para, "Hello")
+    assert para.text == "Hello"
+
+
+def test_replace_paragraph_text_no_runs_with_whitespace() -> None:
+    """Paragraph with no runs stays empty when replacement is whitespace-only."""
+    doc = Document()
+    para = doc.add_paragraph()
+    assert len(para.runs) == 0
+    _replace_paragraph_text(para, "   ")
+    assert len(para.runs) == 0
+    assert para.text == ""
+
+
 # -- extract_segments_docx -----------------------------------------------------
 
 
@@ -123,6 +157,17 @@ def test_rebuild_docx_round_trip() -> None:
     rebuilt = rebuild_document_docx(file_bytes, segments)
     result = extract_segments_docx(rebuilt)
     assert result == original
+
+
+def test_rebuild_docx_with_table() -> None:
+    file_bytes = _make_docx_with_table(["Intro"], [["Cell A", "Cell B"]])
+    segments = extract_segments_docx(file_bytes)
+    translations = [s.upper() for s in segments]
+    rebuilt = rebuild_document_docx(file_bytes, translations)
+    result = extract_segments_docx(rebuilt)
+    assert "INTRO" in result
+    assert "CELL A" in result
+    assert "CELL B" in result
 
 
 # -- extract_segments_pptx -----------------------------------------------------
@@ -259,6 +304,55 @@ def test_translate_document_skips_empty_segments() -> None:
     )
     segments = extract_segments_docx(translated)
     assert segments == ["HELLO", "", "WORLD"]
+    assert calls == ["Hello", "World"]
+
+
+def test_translate_document_dispatches_to_pptx() -> None:
+    file_bytes = _make_pptx(["Hello", "World"])
+    translated = translate_document(
+        file_bytes,
+        "slides.pptx",
+        translate_fn=lambda text: text.upper(),
+    )
+    segments = extract_segments_pptx(translated)
+    assert segments == ["HELLO", "WORLD"]
+
+
+def test_translate_document_dispatches_to_xlsx() -> None:
+    file_bytes = _make_xlsx([["Hello", "World"]])
+    translated = translate_document(
+        file_bytes,
+        "data.xlsx",
+        translate_fn=lambda text: text.upper(),
+    )
+    segments = extract_segments_xlsx(translated)
+    assert segments == ["HELLO", "WORLD"]
+
+
+def test_translate_document_dispatches_to_pdf() -> None:
+    file_bytes = _make_pdf(["Hello"])
+    translated = translate_document(
+        file_bytes,
+        "report.pdf",
+        translate_fn=lambda text: text.upper(),
+    )
+    segments = extract_segments_pdf(translated)
+    assert any("HELLO" in s for s in segments)
+
+
+def test_translate_document_preserves_whitespace_only_segments() -> None:
+    file_bytes = _make_docx(["Hello", "   ", "World"])
+    calls: list[str] = []
+
+    def mock_translate(text: str) -> str:
+        calls.append(text)
+        return text.upper()
+
+    translated = translate_document(
+        file_bytes, "test.docx", translate_fn=mock_translate
+    )
+    segments = extract_segments_docx(translated)
+    assert segments == ["HELLO", "   ", "WORLD"]
     assert calls == ["Hello", "World"]
 
 
