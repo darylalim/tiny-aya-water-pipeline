@@ -44,8 +44,8 @@ uv run ty check streamlit_app.py       # type check
 - Document translation uses `document.py` with per-format `extract_segments_*` / `rebuild_document_*` pairs and a `translate_document` coordinator that accepts a `translate_fn` callback (no Streamlit dependency)
 - Supported formats: .docx (python-docx), .pptx (python-pptx), .xlsx (openpyxl), .pdf (pymupdf/fitz — best-effort layout preservation)
 - `_replace_paragraph_text` helper shared by DOCX and PPTX: replaces text preserving first run's formatting
-- `translate_text` builds a chat prompt, formats it with `tokenizer.apply_chat_template`, and generates with `mlx_lm.generate`
-- `clean_model_output` cleans decoded model output
+- `translate_text` builds a chat prompt, formats it with `tokenizer.apply_chat_template`, creates a sampler via `make_sampler(temp=, top_p=)`, and generates with `mlx_lm.generate`
+- `clean_model_output` strips whitespace and the `<|END_RESPONSE|>` token leaked by the model
 - Model loaded once via `@st.cache_resource` using `mlx_lm.load`; runs on Apple Silicon only
 - Config loaded from `.env` via python-dotenv with sensible defaults
 - UI tests use `streamlit.testing.v1.AppTest`; mocks target `mlx_lm` level (not `streamlit_app`) because AppTest runs scripts via `exec()`
