@@ -4,10 +4,7 @@ import os
 import platform
 import subprocess
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    import torch
+from typing import Any
 
 from dotenv import load_dotenv
 
@@ -17,17 +14,17 @@ env_path = Path(".env")
 if env_path.exists():
     load_dotenv(env_path)
 
-MODEL_ID: str = os.getenv("MODEL_ID", "CohereLabs/tiny-aya-water")
+MODEL_ID: str = os.getenv("MODEL_ID", "mlx-community/tiny-aya-global-8bit-mlx")
 DEFAULT_TEMPERATURE: float = float(os.getenv("DEFAULT_TEMPERATURE", "0.1"))
 DEFAULT_MAX_TOKENS: int = int(os.getenv("DEFAULT_MAX_TOKENS", "700"))
-DEVICE: str = os.getenv("DEVICE", "auto")
 TOP_P: float = float(os.getenv("TOP_P", "0.95"))
 
 # -- Languages ---------------------------------------------------------------
-# Water variant: optimized for European + Asia-Pacific languages.
+# Global variant: 67 languages across Europe, West Asia, South Asia,
+# Asia Pacific, and Africa.
 
 LANGUAGES: list[str] = [
-    # European (31)
+    # Europe (31)
     "English",
     "Dutch",
     "French",
@@ -43,7 +40,7 @@ LANGUAGES: list[str] = [
     "German",
     "Danish",
     "Swedish",
-    "Norwegian",
+    "Bokmål",
     "Catalan",
     "Galician",
     "Welsh",
@@ -59,45 +56,50 @@ LANGUAGES: list[str] = [
     "Hungarian",
     "Serbian",
     "Bulgarian",
-    # Asia-Pacific (12)
-    "Chinese",
-    "Japanese",
-    "Korean",
+    # West Asia (5)
+    "Arabic",
+    "Persian",
+    "Turkish",
+    "Maltese",
+    "Hebrew",
+    # South Asia (9)
+    "Hindi",
+    "Marathi",
+    "Bengali",
+    "Gujarati",
+    "Punjabi",
+    "Tamil",
+    "Telugu",
+    "Nepali",
+    "Urdu",
+    # Asia Pacific (12)
     "Tagalog",
     "Malay",
     "Indonesian",
+    "Vietnamese",
     "Javanese",
     "Khmer",
     "Thai",
     "Lao",
-    "Vietnamese",
+    "Chinese",
     "Burmese",
+    "Japanese",
+    "Korean",
+    # African (10)
+    "Amharic",
+    "Hausa",
+    "Igbo",
+    "Malagasy",
+    "Shona",
+    "Swahili",
+    "Wolof",
+    "Xhosa",
+    "Yoruba",
+    "Zulu",
 ]
 
 
 # -- Pure functions -----------------------------------------------------------
-
-
-def detect_device() -> str:
-    """Return the best available device: cuda > mps > cpu."""
-    import torch
-
-    if torch.cuda.is_available():
-        return "cuda"
-    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-        return "mps"
-    return "cpu"
-
-
-def select_dtype(device: str) -> torch.dtype:
-    """Pick optimal dtype for the given device."""
-    import torch
-
-    if device == "cuda":
-        return torch.bfloat16
-    if device == "mps":
-        return torch.float16
-    return torch.float32
 
 
 def build_translation_prompt(
@@ -116,45 +118,8 @@ def build_translation_prompt(
 
 
 def clean_model_output(decoded_text: str) -> str:
-    """Clean up decoded model output (skip_special_tokens=True already applied)."""
+    """Clean up decoded model output."""
     return decoded_text.strip()
-
-
-def _generate(
-    messages: list[dict[str, str]],
-    model: Any,
-    tokenizer: Any,
-    temperature: float,
-    max_tokens: int,
-) -> str:
-    """Tokenize, generate, decode, and clean model output."""
-    import torch
-
-    inputs = tokenizer.apply_chat_template(
-        messages,
-        tokenize=True,
-        add_generation_prompt=True,
-        return_tensors="pt",
-    )
-    if hasattr(inputs, "keys"):
-        input_ids = inputs["input_ids"].to(model.device)
-        attention_mask = inputs["attention_mask"].to(model.device)
-    else:
-        input_ids = inputs.to(model.device)
-        attention_mask = None
-    with torch.inference_mode():
-        gen_tokens = model.generate(
-            input_ids,
-            attention_mask=attention_mask,
-            max_new_tokens=max_tokens,
-            do_sample=True,
-            temperature=temperature,
-            top_p=TOP_P,
-        )
-    # Decode only the newly generated tokens (skip the input prompt)
-    output_tokens = gen_tokens[0][input_ids.shape[-1] :]
-    decoded = tokenizer.decode(output_tokens, skip_special_tokens=True)
-    return clean_model_output(decoded)
 
 
 def translate_text(
@@ -167,40 +132,49 @@ def translate_text(
     max_tokens: int = DEFAULT_MAX_TOKENS,
 ) -> str:
     """Translate text using the model and return the cleaned result."""
+    from mlx_lm import generate
+
     messages = build_translation_prompt(text, source_lang, target_lang)
-    return _generate(messages, model, tokenizer, temperature, max_tokens)
+    prompt = tokenizer.apply_chat_template(
+        messages, tokenize=False, add_generation_prompt=True
+    )
+    result = generate(
+        model,
+        tokenizer,
+        prompt=prompt,
+        max_tokens=max_tokens,
+        temp=temperature,
+        top_p=TOP_P,
+    )
+    return clean_model_output(result)
 
 
 import streamlit as st  # noqa: E402
 
 
 @st.cache_resource
-def load_model(device: str) -> tuple:
-    """Load tokenizer and model once, cached for the session lifetime."""
-    from transformers import AutoModelForCausalLM, AutoTokenizer
+def load_model() -> tuple:
+    """Load model and tokenizer once, cached for the session lifetime."""
+    from mlx_lm import load
 
-    dtype = select_dtype(device)
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
-    model = AutoModelForCausalLM.from_pretrained(MODEL_ID, dtype=dtype)
-    model = model.to(device).eval()
-    return tokenizer, model, device, dtype
+    model, tokenizer = load(MODEL_ID)
+    return model, tokenizer
 
 
 # -- Main page ----------------------------------------------------------------
 
-st.title("Tiny Aya Water Translate")
+st.title("Tiny Aya Global Translate")
 
 
 # -- Model loading ------------------------------------------------------------
 
 try:
-    _resolved_device = DEVICE if DEVICE != "auto" else detect_device()
-    with st.spinner(f"Loading model on {_resolved_device.upper()}..."):
-        tokenizer, model, _device, _dtype = load_model(_resolved_device)
+    with st.spinner("Loading model..."):
+        model, tokenizer = load_model()
     model_loaded = True
 except Exception as e:
     st.error(f"Failed to load model: {e}")
-    tokenizer, model = None, None
+    model, tokenizer = None, None
     model_loaded = False
 
 # -- Session state defaults ---------------------------------------------------
