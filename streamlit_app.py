@@ -478,18 +478,30 @@ with tab_docs:
                     tokenizer,
                 )
 
-            with doc_warning_slot, st.spinner("Translating document..."):
-                result_bytes = translate_document(
-                    uploaded_file.getvalue(),
-                    uploaded_file.name,
-                    translate_fn=_translate_fn,
+            try:
+                with doc_warning_slot, st.spinner("Translating document..."):
+                    result_bytes = translate_document(
+                        uploaded_file.getvalue(),
+                        uploaded_file.name,
+                        translate_fn=_translate_fn,
+                    )
+            except Exception as e:
+                doc_warning_slot.error(f"Failed to translate document: {e}")
+            else:
+                target = st.session_state.doc_target_lang
+                st.session_state.doc_translated_bytes = result_bytes
+                st.session_state.doc_translated_filename = (
+                    f"{target}_{uploaded_file.name}"
                 )
-            target = st.session_state.doc_target_lang
-            st.session_state.doc_translated_bytes = result_bytes
-            st.session_state.doc_translated_filename = f"{target}_{uploaded_file.name}"
-            st.rerun()
+                st.rerun()
 
-    if st.session_state.doc_translated_bytes:
+    _show_download = (
+        st.session_state.doc_translated_bytes
+        and uploaded_file is not None
+        and st.session_state.doc_translated_filename
+        == f"{st.session_state.doc_target_lang}_{uploaded_file.name}"
+    )
+    if _show_download:
         _mime_types = {
             ".docx": (
                 "application/vnd.openxmlformats-officedocument"
