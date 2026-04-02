@@ -119,10 +119,7 @@ def build_translation_prompt(
 
 def clean_model_output(decoded_text: str) -> str:
     """Clean up decoded model output."""
-    text = decoded_text.strip()
-    if text.endswith("<|END_RESPONSE|>"):
-        text = text[: -len("<|END_RESPONSE|>")].strip()
-    return text
+    return decoded_text.replace("<|END_RESPONSE|>", "").strip()
 
 
 def translate_text(

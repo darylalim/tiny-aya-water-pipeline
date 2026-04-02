@@ -1,5 +1,5 @@
 [project]
-name = "tiny-aya-water-translate"
+name = "tiny-aya-global-translate"
 version = "0.1.0"
 description = "Translate text and documents across 67 languages with mlx-community/tiny-aya-global-8bit-mlx on Apple Silicon"
 readme = "README.md"

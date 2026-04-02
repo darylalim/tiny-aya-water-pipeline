@@ -75,6 +75,13 @@ def test_clean_model_output_strips_end_response_token() -> None:
     assert clean_model_output("Bonjour le monde<|END_RESPONSE|>") == "Bonjour le monde"
 
 
+def test_clean_model_output_strips_end_response_token_with_whitespace() -> None:
+    assert (
+        clean_model_output("  Bonjour le monde  <|END_RESPONSE|>  ")
+        == "Bonjour le monde"
+    )
+
+
 # -- translate_text ------------------------------------------------------------
 
 
@@ -96,10 +103,13 @@ def test_translate_text_returns_cleaned_result(mock_generate: MagicMock) -> None
 
 
 @patch("mlx_lm.generate")
+@patch("mlx_lm.sample_utils.make_sampler")
 def test_translate_text_calls_generate_with_correct_params(
+    mock_make_sampler: MagicMock,
     mock_generate: MagicMock,
 ) -> None:
     mock_generate.return_value = "Bonjour"
+    mock_make_sampler.return_value = MagicMock()
     mock_model = MagicMock()
     mock_tokenizer = MagicMock()
     mock_tokenizer.apply_chat_template.return_value = "formatted prompt"
@@ -114,11 +124,12 @@ def test_translate_text_calls_generate_with_correct_params(
         max_tokens=500,
     )
 
+    mock_make_sampler.assert_called_once_with(temp=0.3, top_p=streamlit_app.TOP_P)
     mock_generate.assert_called_once()
     call_kwargs = mock_generate.call_args.kwargs
     assert call_kwargs["prompt"] == "formatted prompt"
     assert call_kwargs["max_tokens"] == 500
-    assert callable(call_kwargs["sampler"])
+    assert call_kwargs["sampler"] is mock_make_sampler.return_value
 
 
 @patch("mlx_lm.generate")
@@ -147,8 +158,13 @@ def test_translate_text_passes_prompt_to_tokenizer(
 
 
 @patch("mlx_lm.generate")
-def test_translate_text_uses_default_params(mock_generate: MagicMock) -> None:
+@patch("mlx_lm.sample_utils.make_sampler")
+def test_translate_text_uses_default_params(
+    mock_make_sampler: MagicMock,
+    mock_generate: MagicMock,
+) -> None:
     mock_generate.return_value = "Bonjour"
+    mock_make_sampler.return_value = MagicMock()
     mock_model = MagicMock()
     mock_tokenizer = MagicMock()
     mock_tokenizer.apply_chat_template.return_value = "formatted prompt"
@@ -161,6 +177,7 @@ def test_translate_text_uses_default_params(mock_generate: MagicMock) -> None:
         tokenizer=mock_tokenizer,
     )
 
-    call_kwargs = mock_generate.call_args.kwargs
-    assert call_kwargs["max_tokens"] == streamlit_app.DEFAULT_MAX_TOKENS
-    assert callable(call_kwargs["sampler"])
+    mock_make_sampler.assert_called_once_with(
+        temp=streamlit_app.DEFAULT_TEMPERATURE, top_p=streamlit_app.TOP_P
+    )
+    assert mock_generate.call_args.kwargs["max_tokens"] == streamlit_app.DEFAULT_MAX_TOKENS
