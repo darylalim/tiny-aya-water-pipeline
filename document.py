@@ -146,21 +146,23 @@ def extract_segments_pdf(file_bytes: bytes) -> list[str]:
     import fitz
 
     doc = fitz.open(stream=file_bytes, filetype="pdf")
-    segments: list[str] = []
-    for page in doc:
-        blocks = page.get_text("dict")["blocks"]
-        for block in blocks:
-            if "lines" not in block:
-                continue
-            text = ""
-            for line in block["lines"]:
-                for span in line["spans"]:
-                    text += span["text"]
-            text = text.strip()
-            if text:
-                segments.append(text)
-    doc.close()
-    return segments
+    try:
+        segments: list[str] = []
+        for page in doc:
+            blocks = page.get_text("dict")["blocks"]
+            for block in blocks:
+                if "lines" not in block:
+                    continue
+                text = ""
+                for line in block["lines"]:
+                    for span in line["spans"]:
+                        text += span["text"]
+                text = text.strip()
+                if text:
+                    segments.append(text)
+        return segments
+    finally:
+        doc.close()
 
 
 def rebuild_document_pdf(file_bytes: bytes, translations: list[str]) -> bytes:
@@ -171,34 +173,45 @@ def rebuild_document_pdf(file_bytes: bytes, translations: list[str]) -> bytes:
     import fitz
 
     doc = fitz.open(stream=file_bytes, filetype="pdf")
-    idx = 0
-    for page in doc:
-        blocks = page.get_text("dict")["blocks"]
-        insertions: list[tuple[tuple[float, float], str, float]] = []
-        for block in blocks:
-            if "lines" not in block:
-                continue
-            text = ""
-            for line in block["lines"]:
-                for span in line["spans"]:
-                    text += span["text"]
-            text = text.strip()
-            if not text:
-                continue
-            first_span = block["lines"][0]["spans"][0]
-            origin: tuple[float, float] = first_span["origin"]
-            fontsize: float = first_span["size"]
-            page.add_redact_annot(fitz.Rect(block["bbox"]))
-            if idx < len(translations):
-                insertions.append((origin, translations[idx], fontsize))
-                idx += 1
-        page.apply_redactions()
-        for origin, trans_text, fontsize in insertions:
-            page.insert_text(origin, trans_text, fontsize=fontsize)
-    buf = io.BytesIO()
-    doc.save(buf)
-    doc.close()
-    return buf.getvalue()
+    try:
+        idx = 0
+        for page in doc:
+            blocks = page.get_text("dict")["blocks"]
+            insertions: list[tuple[Any, str, float]] = []
+            for block in blocks:
+                if "lines" not in block:
+                    continue
+                text = ""
+                for line in block["lines"]:
+                    for span in line["spans"]:
+                        text += span["text"]
+                text = text.strip()
+                if not text:
+                    continue
+                rect = fitz.Rect(block["bbox"])
+                fontsize: float = block["lines"][0]["spans"][0]["size"]
+                page.add_redact_annot(rect)
+                if idx < len(translations):
+                    insertions.append((rect, translations[idx], fontsize))
+                    idx += 1
+            page.apply_redactions()
+            page_width = page.rect.width
+            for rect, trans_text, fontsize in insertions:
+                # Expand rect to page width and add vertical room — the
+                # extracted bbox is tight around glyphs so translated text
+                # (often longer) would overflow the original bounds.
+                expanded = fitz.Rect(
+                    rect.x0,
+                    rect.y0,
+                    page_width - 36,
+                    rect.y1 + fontsize * 2,
+                )
+                page.insert_textbox(expanded, trans_text, fontsize=fontsize)
+        buf = io.BytesIO()
+        doc.save(buf)
+        return buf.getvalue()
+    finally:
+        doc.close()
 
 
 # -- Coordinator ---------------------------------------------------------------
