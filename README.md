@@ -4,7 +4,8 @@ Translate text across 67 languages — all running privately on your Mac. Powere
 
 ## Features
 
-- Side-by-side text translation with swap, clear, copy (plain-text), and download
+- Side-by-side text translation
+- Swap, clear, copy (plain-text), and download controls
 - 67 languages across Europe, West Asia, South Asia, Asia Pacific, and Africa
 - 8-bit quantized MLX inference on Apple Silicon
 - Local inference — no API key required
