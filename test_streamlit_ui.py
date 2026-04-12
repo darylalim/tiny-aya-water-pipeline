@@ -166,6 +166,26 @@ def test_input_max_chars_enforced(app: AppTest) -> None:
     assert len(app.text_area[0].value) <= 5000
 
 
+# -- Download button -----------------------------------------------------------
+
+
+def test_download_button_exists(app: AppTest) -> None:
+    assert len(app.get("download_button")) == 1
+
+
+def test_download_button_label(app: AppTest) -> None:
+    assert app.get("download_button")[0].label == "Download"
+
+
+def test_download_button_disabled_when_output_empty(app: AppTest) -> None:
+    assert app.get("download_button")[0].disabled
+
+
+def test_download_button_enabled_when_output_present() -> None:
+    at = _run_inference_test(input_text="Hello", generate_result="Bonjour")
+    assert not at.get("download_button")[0].disabled
+
+
 # -- Output text area ----------------------------------------------------------
 
 
