@@ -13,7 +13,6 @@ Streamlit app for translating text across 67 languages using the `mlx-community/
 - `streamlit_app.py` — main app: config, pure functions, Streamlit UI
 - `test_streamlit_app.py` — pytest unit tests for pure functions
 - `test_streamlit_ui.py` — pytest UI tests for Streamlit interface
-- `docs/` — design specs and implementation plans
 
 ## Commands
 
