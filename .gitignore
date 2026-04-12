@@ -25,3 +25,6 @@ __pycache__/
 
 # Streamlit
 .streamlit/
+
+# Superpowers-generated plans/specs
+docs/
