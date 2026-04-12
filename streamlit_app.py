@@ -252,8 +252,8 @@ with col_output:
 
 # -- Controls row -------------------------------------------------------------
 
-sub_translate, _, sub_download = st.columns(
-    [6, 25, 1], vertical_alignment="center", gap="small"
+sub_translate, sub_download = st.columns(
+    2, vertical_alignment="center", gap="small"
 )
 with sub_translate:
     st.button(
@@ -262,19 +262,19 @@ with sub_translate:
         on_click=request_translate,
         disabled=not model_loaded,
         type="primary",
+        use_container_width=True,
     )
 with sub_download:
     output_has_text = bool(st.session_state.translate_output.strip())
     st.download_button(
-        "",
+        "Download",
         key="download",
-        icon=":material/download:",
         data=st.session_state.translate_output,
         file_name="translation.txt",
         mime="text/plain",
         disabled=not output_has_text,
-        type="tertiary",
-        help="Download translation",
+        type="secondary",
+        use_container_width=True,
     )
 
 # -- Process translation request (below controls) ---------------------------
