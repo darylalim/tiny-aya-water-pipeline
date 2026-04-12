@@ -35,7 +35,7 @@ def _run_inference_test(input_text: str, generate_result: str) -> AppTest:
         at = AppTest.from_file("streamlit_app.py")
         at.run(timeout=60)
         at.text_area[0].set_value(input_text)
-        at.button("Translate").click()
+        at.button("translate").click()
         at.run(timeout=60)
     return at
 
@@ -77,7 +77,7 @@ def test_swap_moves_output_to_input() -> None:
 
         # Translate "Hello" -> "Bonjour"
         at.text_area[0].set_value("Hello")
-        at.button("Translate").click()
+        at.button("translate").click()
         at.run(timeout=60)
 
         # Swap
@@ -109,11 +109,11 @@ def test_output_text_area_placeholder(app: AppTest) -> None:
 
 
 def test_translate_button_exists(app: AppTest) -> None:
-    assert app.button("Translate") is not None
+    assert app.button("translate") is not None
 
 
 def test_translate_button_enabled_when_model_loaded(app: AppTest) -> None:
-    assert not app.button("Translate").disabled
+    assert not app.button("translate").disabled
 
 
 def test_translate_success_shows_result() -> None:
@@ -122,7 +122,7 @@ def test_translate_success_shows_result() -> None:
 
 
 def test_translate_empty_text_shows_warning(app: AppTest) -> None:
-    app.button("Translate").click()
+    app.button("translate").click()
     _rerun_with_mocks(app)
 
     warning_values = [w.value for w in app.warning]
@@ -132,7 +132,7 @@ def test_translate_empty_text_shows_warning(app: AppTest) -> None:
 def test_translate_same_language_shows_warning(app: AppTest) -> None:
     app.selectbox[1].set_value("English")
     app.text_area[0].set_value("Hello")
-    app.button("Translate").click()
+    app.button("translate").click()
     _rerun_with_mocks(app)
 
     warning_values = [w.value for w in app.warning]
@@ -210,4 +210,4 @@ def test_model_load_failure_disables_translate_button() -> None:
         at = AppTest.from_file("streamlit_app.py")
         at.run(timeout=60)
 
-    assert at.button("Translate").disabled
+    assert at.button("translate").disabled

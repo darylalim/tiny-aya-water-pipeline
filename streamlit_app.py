@@ -10,8 +10,7 @@ DEFAULT_MAX_TOKENS: int = 700
 TOP_P: float = 0.95
 
 # -- Languages ---------------------------------------------------------------
-# Global variant: 67 languages across Europe, West Asia, South Asia,
-# Asia Pacific, and Africa.
+# 67 languages across Europe, West Asia, South Asia, Asia Pacific, and Africa.
 
 LANGUAGES: list[str] = [
     # Europe (31)
@@ -144,7 +143,7 @@ import streamlit as st  # noqa: E402
 
 
 @st.cache_resource
-def load_model() -> tuple:
+def load_model() -> tuple[Any, Any]:
     """Load model and tokenizer once, cached for the session lifetime."""
     from mlx_lm import load
 
@@ -233,7 +232,7 @@ warning_slot = st.container()
 
 col_input, col_output = st.columns(2)
 with col_input:
-    translate_input = st.text_area(
+    st.text_area(
         "Input",
         height=300,
         max_chars=5000,
@@ -258,21 +257,20 @@ sub_translate, sub_download = st.columns(
 with sub_translate:
     st.button(
         "Translate",
-        key="Translate",
+        key="translate",
         on_click=request_translate,
         disabled=not model_loaded,
         type="primary",
         use_container_width=True,
     )
 with sub_download:
-    output_has_text = bool(st.session_state.translate_output.strip())
     st.download_button(
         "Download",
         key="download",
         data=st.session_state.translate_output,
         file_name="translation.txt",
         mime="text/plain",
-        disabled=not output_has_text,
+        disabled=not st.session_state.translate_output.strip(),
         type="secondary",
         use_container_width=True,
     )
@@ -281,15 +279,15 @@ with sub_download:
 
 if st.session_state._do_translate:
     st.session_state._do_translate = False
-    _current_input = st.session_state.translate_input
-    if not _current_input.strip():
+    current_input = st.session_state.translate_input
+    if not current_input.strip():
         warning_slot.warning("Please enter some text first.")
     elif st.session_state.source_lang == st.session_state.target_lang:
         warning_slot.warning("Please pick two different languages.")
     else:
         with st.spinner("Translating..."):
             result = translate_text(
-                _current_input,
+                current_input,
                 st.session_state.source_lang,
                 st.session_state.target_lang,
                 model,
