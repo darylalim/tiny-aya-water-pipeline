@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import platform
-import subprocess
 from typing import Any
 
 # -- Config ------------------------------------------------------------------
@@ -199,12 +197,6 @@ def swap_languages() -> None:
     st.session_state.translate_output = ""
 
 
-def clear_input() -> None:
-    """Clear the input and output text."""
-    st.session_state.translate_input = ""
-    st.session_state.translate_output = ""
-
-
 # -- Language bar -------------------------------------------------------------
 
 col_from, col_swap, col_to = st.columns([10, 1, 10], vertical_alignment="center")
@@ -260,8 +252,8 @@ with col_output:
 
 # -- Controls row -------------------------------------------------------------
 
-sub_translate, sub_clear, _, sub_copy, sub_download = st.columns(
-    [6, 1, 25, 1, 1], vertical_alignment="center", gap="small"
+sub_translate, _, sub_download = st.columns(
+    [6, 25, 1], vertical_alignment="center", gap="small"
 )
 with sub_translate:
     st.button(
@@ -271,46 +263,8 @@ with sub_translate:
         disabled=not model_loaded,
         type="primary",
     )
-with sub_clear:
-    st.button(
-        "",
-        key="clear",
-        icon=":material/close:",
-        on_click=clear_input,
-        disabled=not translate_input.strip(),
-        type="tertiary",
-        help="Clear source text",
-    )
-with sub_copy:
-    output_has_text = bool(st.session_state.translate_output.strip())
-    if st.button(
-        "",
-        key="copy",
-        icon=":material/content_copy:",
-        type="tertiary",
-        disabled=not output_has_text,
-        help="Copy translation",
-    ):
-        # Use a platform-native CLI to write plain text directly to the
-        # system clipboard, bypassing browser iframe clipboard API issues
-        # that leak HTML and cause rich-text formatting in rich-text apps.
-        _os = platform.system()
-        if _os == "Darwin":
-            _clip_cmd = ["/usr/bin/pbcopy"]
-        elif _os == "Linux":
-            _clip_cmd = ["xclip", "-selection", "clipboard"]
-        else:
-            _clip_cmd = ["clip"]
-        try:
-            subprocess.run(
-                _clip_cmd,
-                input=st.session_state.translate_output.encode("utf-8"),
-                check=True,
-            )
-            st.toast("Translation copied")
-        except (FileNotFoundError, subprocess.CalledProcessError):
-            st.warning("Could not copy to clipboard.")
 with sub_download:
+    output_has_text = bool(st.session_state.translate_output.strip())
     st.download_button(
         "",
         key="download",

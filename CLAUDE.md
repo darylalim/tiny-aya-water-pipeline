@@ -31,8 +31,7 @@ uv run ty check streamlit_app.py                             # type check
 - All utility buttons use Material Icons via the `icon` parameter and `help=` for hover tooltips
 - Swap button (`:material/swap_horiz:`, tertiary) flips languages via `st.session_state` and moves output into input
 - Translate button uses `type="primary"` with a callback + flag pattern (`_do_translate`) and `st.rerun()` to update output
-- Side-by-side input/output `st.text_area()` (output bound via `value=`, disabled) with a controls row (Translate, clear, copy, download)
-- Copy button uses `subprocess` + `/usr/bin/pbcopy` for plain-text clipboard with `st.toast("Translation copied")` on success
+- Side-by-side input/output `st.text_area()` (output bound via `value=`, disabled) with a controls row (Translate, download)
 - Download button uses `st.download_button` to save translation as `translation.txt`
 - `translate_text` builds a chat prompt, formats it with `tokenizer.apply_chat_template`, creates a sampler via `make_sampler(temp=, top_p=)`, and generates with `mlx_lm.generate`
 - `clean_model_output` strips whitespace and the `<|END_RESPONSE|>` token leaked by the model
