@@ -42,4 +42,4 @@ uv run ty check streamlit_app.py                             # type check
 - Model loaded once via `@st.cache_resource` using `mlx_lm.load`; runs on Apple Silicon only
 - Config loaded from `.env` via python-dotenv with sensible defaults
 - UI tests use `streamlit.testing.v1.AppTest`; mocks target `mlx_lm` level (not `streamlit_app`) because AppTest runs scripts via `exec()`
-- License: CC-BY-NC (non-commercial use only)
+- The `mlx-community/tiny-aya-global-8bit-mlx` model is licensed CC-BY-NC (non-commercial use only)
