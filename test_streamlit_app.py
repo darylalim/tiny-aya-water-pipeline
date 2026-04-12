@@ -180,4 +180,6 @@ def test_translate_text_uses_default_params(
     mock_make_sampler.assert_called_once_with(
         temp=streamlit_app.DEFAULT_TEMPERATURE, top_p=streamlit_app.TOP_P
     )
-    assert mock_generate.call_args.kwargs["max_tokens"] == streamlit_app.DEFAULT_MAX_TOKENS
+    assert (
+        mock_generate.call_args.kwargs["max_tokens"] == streamlit_app.DEFAULT_MAX_TOKENS
+    )

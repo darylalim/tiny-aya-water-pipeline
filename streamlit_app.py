@@ -190,16 +190,6 @@ if "translate_output" not in st.session_state:
     st.session_state.translate_output = ""
 if "_do_translate" not in st.session_state:
     st.session_state._do_translate = False
-if "doc_source_lang" not in st.session_state:
-    st.session_state.doc_source_lang = "English"
-if "doc_target_lang" not in st.session_state:
-    st.session_state.doc_target_lang = "French"
-if "doc_translated_bytes" not in st.session_state:
-    st.session_state.doc_translated_bytes = b""
-if "doc_translated_filename" not in st.session_state:
-    st.session_state.doc_translated_filename = ""
-if "_do_translate_doc" not in st.session_state:
-    st.session_state._do_translate_doc = False
 
 
 def request_translate() -> None:
@@ -223,282 +213,141 @@ def clear_input() -> None:
     st.session_state.translate_output = ""
 
 
-def swap_doc_languages() -> None:
-    """Swap source/target languages in the Documents tab."""
-    st.session_state.doc_source_lang, st.session_state.doc_target_lang = (
-        st.session_state.doc_target_lang,
-        st.session_state.doc_source_lang,
+# -- Language bar -------------------------------------------------------------
+
+col_from, col_swap, col_to = st.columns([10, 1, 10], vertical_alignment="center")
+with col_from:
+    source_lang = st.selectbox(
+        "From",
+        LANGUAGES,
+        key="source_lang",
+        label_visibility="collapsed",
     )
-
-
-def request_translate_doc() -> None:
-    """Flag that a document translation was requested."""
-    st.session_state._do_translate_doc = True
-
-
-# -- Tabs ---------------------------------------------------------------------
-
-tab_text, tab_docs = st.tabs(["Text", "Documents"])
-
-# -- Text tab -----------------------------------------------------------------
-
-with tab_text:
-    # -- Language bar ---------------------------------------------------------
-
-    col_from, col_swap, col_to = st.columns([10, 1, 10], vertical_alignment="center")
-    with col_from:
-        source_lang = st.selectbox(
-            "From",
-            LANGUAGES,
-            key="source_lang",
-            label_visibility="collapsed",
-        )
-    with col_swap:
-        st.button(
-            "",
-            key="swap",
-            icon=":material/swap_horiz:",
-            on_click=swap_languages,
-            use_container_width=True,
-            type="tertiary",
-            help="Swap languages",
-        )
-    with col_to:
-        target_lang = st.selectbox(
-            "To",
-            LANGUAGES,
-            key="target_lang",
-            label_visibility="collapsed",
-        )
-
-    # -- Warning slot (above panels) ------------------------------------------
-
-    warning_slot = st.container()
-
-    # -- Side-by-side text panels ---------------------------------------------
-
-    col_input, col_output = st.columns(2)
-    with col_input:
-        translate_input = st.text_area(
-            "Input",
-            height=300,
-            max_chars=5000,
-            key="translate_input",
-            label_visibility="collapsed",
-        )
-    with col_output:
-        st.text_area(
-            "Output",
-            height=300,
-            placeholder="Translation",
-            disabled=True,
-            value=st.session_state.translate_output,
-            label_visibility="collapsed",
-        )
-
-    # -- Controls row ---------------------------------------------------------
-
-    sub_translate, sub_clear, _, sub_copy, sub_download = st.columns(
-        [6, 1, 25, 1, 1], vertical_alignment="center", gap="small"
+with col_swap:
+    st.button(
+        "",
+        key="swap",
+        icon=":material/swap_horiz:",
+        on_click=swap_languages,
+        use_container_width=True,
+        type="tertiary",
+        help="Swap languages",
     )
-    with sub_translate:
-        st.button(
-            "Translate",
-            key="Translate",
-            on_click=request_translate,
-            disabled=not model_loaded,
-            type="primary",
-        )
-    with sub_clear:
-        st.button(
-            "",
-            key="clear",
-            icon=":material/close:",
-            on_click=clear_input,
-            disabled=not translate_input.strip(),
-            type="tertiary",
-            help="Clear source text",
-        )
-    with sub_copy:
-        output_has_text = bool(st.session_state.translate_output.strip())
-        if st.button(
-            "",
-            key="copy",
-            icon=":material/content_copy:",
-            type="tertiary",
-            disabled=not output_has_text,
-            help="Copy translation",
-        ):
-            # Use a platform-native CLI to write plain text directly to the
-            # system clipboard, bypassing browser iframe clipboard API issues
-            # that leak HTML and cause rich-text formatting in rich-text apps.
-            _os = platform.system()
-            if _os == "Darwin":
-                _clip_cmd = ["/usr/bin/pbcopy"]
-            elif _os == "Linux":
-                _clip_cmd = ["xclip", "-selection", "clipboard"]
-            else:
-                _clip_cmd = ["clip"]
-            try:
-                subprocess.run(
-                    _clip_cmd,
-                    input=st.session_state.translate_output.encode("utf-8"),
-                    check=True,
-                )
-                st.toast("Translation copied")
-            except (FileNotFoundError, subprocess.CalledProcessError):
-                st.warning("Could not copy to clipboard.")
-    with sub_download:
-        st.download_button(
-            "",
-            key="download",
-            icon=":material/download:",
-            data=st.session_state.translate_output,
-            file_name="translation.txt",
-            mime="text/plain",
-            disabled=not output_has_text,
-            type="tertiary",
-            help="Download translation",
-        )
-
-    # -- Process translation request (below controls) -------------------------
-
-    if st.session_state._do_translate:
-        st.session_state._do_translate = False
-        _current_input = st.session_state.translate_input
-        if not _current_input.strip():
-            warning_slot.warning("Please enter some text first.")
-        elif st.session_state.source_lang == st.session_state.target_lang:
-            warning_slot.warning("Please pick two different languages.")
-        else:
-            with st.spinner("Translating..."):
-                result = translate_text(
-                    _current_input,
-                    st.session_state.source_lang,
-                    st.session_state.target_lang,
-                    model,
-                    tokenizer,
-                )
-            st.session_state.translate_output = result
-            st.rerun()  # Re-render to update the already-rendered output text_area
-
-# -- Documents tab ------------------------------------------------------------
-
-with tab_docs:
-    doc_col_from, doc_col_swap, doc_col_to = st.columns(
-        [10, 1, 10], vertical_alignment="center"
-    )
-    with doc_col_from:
-        st.selectbox(
-            "From",
-            LANGUAGES,
-            key="doc_source_lang",
-            label_visibility="collapsed",
-        )
-    with doc_col_swap:
-        st.button(
-            "",
-            key="doc_swap",
-            icon=":material/swap_horiz:",
-            on_click=swap_doc_languages,
-            use_container_width=True,
-            type="tertiary",
-            help="Swap languages",
-        )
-    with doc_col_to:
-        st.selectbox(
-            "To",
-            LANGUAGES,
-            key="doc_target_lang",
-            label_visibility="collapsed",
-        )
-
-    doc_warning_slot = st.container()
-
-    uploaded_file = st.file_uploader(
-        "Upload a document",
-        type=["docx", "pdf", "pptx", "xlsx"],
+with col_to:
+    target_lang = st.selectbox(
+        "To",
+        LANGUAGES,
+        key="target_lang",
         label_visibility="collapsed",
     )
 
-    _file_too_large = (
-        uploaded_file is not None and uploaded_file.size > 10 * 1024 * 1024
-    )
-    if _file_too_large:
-        doc_warning_slot.warning("File too large. Maximum size is 10 MB.")
+# -- Warning slot (above panels) ---------------------------------------------
 
+warning_slot = st.container()
+
+# -- Side-by-side text panels ------------------------------------------------
+
+col_input, col_output = st.columns(2)
+with col_input:
+    translate_input = st.text_area(
+        "Input",
+        height=300,
+        max_chars=5000,
+        key="translate_input",
+        label_visibility="collapsed",
+    )
+with col_output:
+    st.text_area(
+        "Output",
+        height=300,
+        placeholder="Translation",
+        disabled=True,
+        value=st.session_state.translate_output,
+        label_visibility="collapsed",
+    )
+
+# -- Controls row -------------------------------------------------------------
+
+sub_translate, sub_clear, _, sub_copy, sub_download = st.columns(
+    [6, 1, 25, 1, 1], vertical_alignment="center", gap="small"
+)
+with sub_translate:
     st.button(
         "Translate",
-        key="TranslateDoc",
-        on_click=request_translate_doc,
-        disabled=not model_loaded or uploaded_file is None or _file_too_large,
+        key="Translate",
+        on_click=request_translate,
+        disabled=not model_loaded,
         type="primary",
     )
-
-    if st.session_state._do_translate_doc:
-        st.session_state._do_translate_doc = False
-        if st.session_state.doc_source_lang == st.session_state.doc_target_lang:
-            doc_warning_slot.warning("Please pick two different languages.")
-        elif uploaded_file is None:
-            doc_warning_slot.warning("Please upload a file first.")
-        else:
-            from document import translate_document
-
-            def _translate_fn(text: str) -> str:
-                return translate_text(
-                    text,
-                    st.session_state.doc_source_lang,
-                    st.session_state.doc_target_lang,
-                    model,
-                    tokenizer,
-                )
-
-            try:
-                with doc_warning_slot, st.spinner("Translating document..."):
-                    result_bytes = translate_document(
-                        uploaded_file.getvalue(),
-                        uploaded_file.name,
-                        translate_fn=_translate_fn,
-                    )
-            except Exception as e:
-                doc_warning_slot.error(f"Failed to translate document: {e}")
-            else:
-                target = st.session_state.doc_target_lang
-                st.session_state.doc_translated_bytes = result_bytes
-                st.session_state.doc_translated_filename = (
-                    f"{target}_{uploaded_file.name}"
-                )
-                st.rerun()
-
-    _show_download = (
-        st.session_state.doc_translated_bytes
-        and uploaded_file is not None
-        and st.session_state.doc_translated_filename
-        == f"{st.session_state.doc_target_lang}_{uploaded_file.name}"
+with sub_clear:
+    st.button(
+        "",
+        key="clear",
+        icon=":material/close:",
+        on_click=clear_input,
+        disabled=not translate_input.strip(),
+        type="tertiary",
+        help="Clear source text",
     )
-    if _show_download:
-        _mime_types = {
-            ".docx": (
-                "application/vnd.openxmlformats-officedocument"
-                ".wordprocessingml.document"
-            ),
-            ".pdf": "application/pdf",
-            ".pptx": (
-                "application/vnd.openxmlformats-officedocument"
-                ".presentationml.presentation"
-            ),
-            ".xlsx": (
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            ),
-        }
-        _fname = st.session_state.doc_translated_filename
-        _ext = Path(_fname).suffix.lower()
-        st.download_button(
-            f"Download {_fname}",
-            key="doc_download",
-            data=st.session_state.doc_translated_bytes,
-            file_name=_fname,
-            mime=_mime_types.get(_ext, "application/octet-stream"),
-            type="primary",
-            icon=":material/download:",
-        )
+with sub_copy:
+    output_has_text = bool(st.session_state.translate_output.strip())
+    if st.button(
+        "",
+        key="copy",
+        icon=":material/content_copy:",
+        type="tertiary",
+        disabled=not output_has_text,
+        help="Copy translation",
+    ):
+        # Use a platform-native CLI to write plain text directly to the
+        # system clipboard, bypassing browser iframe clipboard API issues
+        # that leak HTML and cause rich-text formatting in rich-text apps.
+        _os = platform.system()
+        if _os == "Darwin":
+            _clip_cmd = ["/usr/bin/pbcopy"]
+        elif _os == "Linux":
+            _clip_cmd = ["xclip", "-selection", "clipboard"]
+        else:
+            _clip_cmd = ["clip"]
+        try:
+            subprocess.run(
+                _clip_cmd,
+                input=st.session_state.translate_output.encode("utf-8"),
+                check=True,
+            )
+            st.toast("Translation copied")
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            st.warning("Could not copy to clipboard.")
+with sub_download:
+    st.download_button(
+        "",
+        key="download",
+        icon=":material/download:",
+        data=st.session_state.translate_output,
+        file_name="translation.txt",
+        mime="text/plain",
+        disabled=not output_has_text,
+        type="tertiary",
+        help="Download translation",
+    )
+
+# -- Process translation request (below controls) ---------------------------
+
+if st.session_state._do_translate:
+    st.session_state._do_translate = False
+    _current_input = st.session_state.translate_input
+    if not _current_input.strip():
+        warning_slot.warning("Please enter some text first.")
+    elif st.session_state.source_lang == st.session_state.target_lang:
+        warning_slot.warning("Please pick two different languages.")
+    else:
+        with st.spinner("Translating..."):
+            result = translate_text(
+                _current_input,
+                st.session_state.source_lang,
+                st.session_state.target_lang,
+                model,
+                tokenizer,
+            )
+        st.session_state.translate_output = result
+        st.rerun()  # Re-render to update the already-rendered output text_area

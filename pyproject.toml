@@ -1,16 +1,12 @@
 [project]
 name = "tiny-aya-global-translate"
 version = "0.1.0"
-description = "Translate text and documents across 67 languages with mlx-community/tiny-aya-global-8bit-mlx on Apple Silicon"
+description = "Translate text across 67 languages with mlx-community/tiny-aya-global-8bit-mlx on Apple Silicon"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "mlx-lm>=0.28.0",
-    "openpyxl>=3.1.0",
-    "pymupdf>=1.25.0",
-    "python-docx>=1.1.0",
     "python-dotenv>=1.2.2",
-    "python-pptx>=1.0.0",
     "streamlit>=1.55.0",
 ]
 
