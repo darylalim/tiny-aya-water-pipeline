@@ -1,6 +1,6 @@
 ## Project
 
-Streamlit app for translating text across 67 languages using mlx-community/tiny-aya-global-8bit-mlx (8-bit quantized multilingual model) with local MLX inference on Apple Silicon.
+Streamlit app for translating text across 67 languages using the `mlx-community/tiny-aya-global-8bit-mlx` model with local MLX inference on Apple Silicon.
 
 ## Stack
 
