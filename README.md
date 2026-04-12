@@ -12,7 +12,7 @@ Translate text across 67 languages — all running privately on your Mac. Powere
 
 ## Prerequisites
 
-- Apple Silicon Mac (M1/M2/M3/M4)
+- Apple Silicon Mac
 - Python 3.12+
 - [uv](https://docs.astral.sh/uv/)
 
