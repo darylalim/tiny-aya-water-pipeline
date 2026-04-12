@@ -4,8 +4,9 @@ Streamlit app for translating text across 67 languages using the `mlx-community/
 
 ## Stack
 
-- Python 3.12+, uv for project management
-- Streamlit (UI), mlx-lm (inference on Apple Silicon)
+- Python 3.12+ with uv for project management
+- Streamlit for UI
+- mlx-lm for inference on Apple Silicon
 - python-dotenv for configuration
 
 ## Structure
