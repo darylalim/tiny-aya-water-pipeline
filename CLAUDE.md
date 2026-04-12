@@ -19,11 +19,11 @@ Streamlit app for translating text across 67 languages using mlx-community/tiny-
 ## Commands
 
 ```bash
-uv run streamlit run streamlit_app.py   # run the app
+uv run streamlit run streamlit_app.py                        # run the app
 uv run pytest test_streamlit_app.py test_streamlit_ui.py -v  # run tests
-uv run ruff check --fix .              # lint
-uv run ruff format .                   # format
-uv run ty check streamlit_app.py       # type check
+uv run ruff check --fix .                                    # lint
+uv run ruff format .                                         # format
+uv run ty check streamlit_app.py                             # type check
 ```
 
 ## Conventions
