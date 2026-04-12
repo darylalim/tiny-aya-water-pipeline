@@ -20,7 +20,6 @@ Translate text across 67 languages — all running privately on your Mac. Powere
 
 ```bash
 uv sync
-cp .env.example .env  # edit as needed
 ```
 
 ## Usage
@@ -29,7 +28,7 @@ cp .env.example .env  # edit as needed
 uv run streamlit run streamlit_app.py
 ```
 
-First run downloads the model (~1.7 GB). Configuration options are in `.env.example`.
+First run downloads the model (~1.7 GB). To tune the model or sampling parameters, edit the constants at the top of `streamlit_app.py`.
 
 ## Development
 

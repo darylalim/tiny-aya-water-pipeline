@@ -1,23 +1,15 @@
 from __future__ import annotations
 
-import os
 import platform
 import subprocess
-from pathlib import Path
 from typing import Any
-
-from dotenv import load_dotenv
 
 # -- Config ------------------------------------------------------------------
 
-env_path = Path(".env")
-if env_path.exists():
-    load_dotenv(env_path)
-
-MODEL_ID: str = os.getenv("MODEL_ID", "mlx-community/tiny-aya-global-8bit-mlx")
-DEFAULT_TEMPERATURE: float = float(os.getenv("DEFAULT_TEMPERATURE", "0.1"))
-DEFAULT_MAX_TOKENS: int = int(os.getenv("DEFAULT_MAX_TOKENS", "700"))
-TOP_P: float = float(os.getenv("TOP_P", "0.95"))
+MODEL_ID: str = "mlx-community/tiny-aya-global-8bit-mlx"
+DEFAULT_TEMPERATURE: float = 0.1
+DEFAULT_MAX_TOKENS: int = 700
+TOP_P: float = 0.95
 
 # -- Languages ---------------------------------------------------------------
 # Global variant: 67 languages across Europe, West Asia, South Asia,

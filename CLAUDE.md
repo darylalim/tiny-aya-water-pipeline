@@ -7,14 +7,12 @@ Streamlit app for translating text across 67 languages using the `mlx-community/
 - Python 3.12+ with uv for project management
 - Streamlit for UI
 - mlx-lm for inference on Apple Silicon
-- python-dotenv for configuration
 
 ## Structure
 
 - `streamlit_app.py` — main app: config, pure functions, Streamlit UI
 - `test_streamlit_app.py` — pytest unit tests for pure functions
 - `test_streamlit_ui.py` — pytest UI tests for Streamlit interface
-- `.env.example` — runtime configuration defaults
 - `docs/` — design specs and implementation plans
 
 ## Commands
@@ -40,6 +38,6 @@ uv run ty check streamlit_app.py                             # type check
 - `translate_text` builds a chat prompt, formats it with `tokenizer.apply_chat_template`, creates a sampler via `make_sampler(temp=, top_p=)`, and generates with `mlx_lm.generate`
 - `clean_model_output` strips whitespace and the `<|END_RESPONSE|>` token leaked by the model
 - Model loaded once via `@st.cache_resource` using `mlx_lm.load`; runs on Apple Silicon only
-- Config loaded from `.env` via python-dotenv with sensible defaults
+- Config is hardcoded as module-level constants (`MODEL_ID`, `DEFAULT_TEMPERATURE`, `DEFAULT_MAX_TOKENS`, `TOP_P`) at the top of `streamlit_app.py`
 - UI tests use `streamlit.testing.v1.AppTest`; mocks target `mlx_lm` level (not `streamlit_app`) because AppTest runs scripts via `exec()`
 - The `mlx-community/tiny-aya-global-8bit-mlx` model is licensed CC-BY-NC (non-commercial use only)
