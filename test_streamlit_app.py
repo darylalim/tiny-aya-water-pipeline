@@ -6,6 +6,7 @@ import streamlit_app
 from streamlit_app import (
     ASR_LANGUAGE_CODES,
     ASR_MODEL_ID,
+    ASR_MODEL_SUBDIR,
     LANGUAGES,
     build_translation_prompt,
     clean_model_output,
@@ -195,6 +196,13 @@ def test_translate_text_uses_default_params(
 
 def test_asr_model_id_is_mlx_8bit_repo() -> None:
     assert ASR_MODEL_ID == "mlx-community/cohere-transcribe-03-2026-mlx-8bit"
+
+
+# -- ASR_MODEL_SUBDIR ----------------------------------------------------------
+
+
+def test_asr_model_subdir_is_mlx_int8() -> None:
+    assert ASR_MODEL_SUBDIR == "mlx-int8"
 
 
 # -- ASR_LANGUAGE_CODES --------------------------------------------------------
