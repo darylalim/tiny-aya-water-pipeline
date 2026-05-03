@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import soundfile as sf
+
 # -- Config ------------------------------------------------------------------
 
 MODEL_ID: str = "mlx-community/tiny-aya-global-8bit-mlx"
@@ -322,6 +324,32 @@ st.file_uploader(
 # -- Warning slot (above panels) ---------------------------------------------
 
 warning_slot = st.container()
+
+# -- Process transcription request -------------------------------------------
+
+if st.session_state._do_transcribe:
+    st.session_state._do_transcribe = False
+    uploaded = st.session_state.audio_file
+    if uploaded is None:
+        pass
+    elif st.session_state.source_lang not in ASR_LANGUAGE_CODES:
+        warning_slot.warning("Audio language not supported.")
+    else:
+        try:
+            with st.spinner("Transcribing..."):
+                transcript = transcribe_audio(
+                    uploaded.getvalue(),
+                    st.session_state.source_lang,
+                    asr_model,
+                )
+        except sf.LibsndfileError:
+            warning_slot.error(
+                "Could not decode audio file. Try WAV/FLAC if MP3 fails."
+            )
+        except Exception as e:
+            warning_slot.error(f"Transcription failed: {e}")
+        else:
+            st.session_state.translate_input = transcript
 
 # -- Side-by-side text panels ------------------------------------------------
 
