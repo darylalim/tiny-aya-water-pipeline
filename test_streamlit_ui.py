@@ -108,6 +108,43 @@ def _drive_transcription(
     return at
 
 
+def _drive_mic_transcription(
+    audio_bytes: bytes,
+    transcribe_text: str,
+    *,
+    source_lang: str = "English",
+) -> AppTest:
+    """Build a fresh AppTest, simulate a mic recording, and return the rerun result.
+
+    AppTest doesn't have a documented public API for st.audio_input, so we set
+    the widget's session_state value, _do_transcribe, and _transcribe_source
+    directly — same workaround pattern as _drive_transcription for files.
+    """
+    fake_model = MagicMock()
+    fake_model.transcribe.return_value = MagicMock(text=transcribe_text)
+    fake_audio = np.zeros(16000, dtype=np.float32)
+
+    with (
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            return_value=fake_model,
+        ),
+        patch("soundfile.read", return_value=(fake_audio, 16000)),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+        if source_lang != "English":
+            at.selectbox[0].set_value(source_lang)
+            at.run(timeout=60)
+        at.session_state.mic_input = _FakeUploadedFile(audio_bytes)
+        at.session_state._do_transcribe = True
+        at.session_state._transcribe_source = "mic"
+        at.run(timeout=60)
+    return at
+
+
 # -- Language defaults ---------------------------------------------------------
 
 
@@ -355,7 +392,7 @@ def test_audio_uploader_info_visible_when_unsupported(app: AppTest) -> None:
     _rerun_with_mocks(app)
 
     info_values = [str(i.value) for i in app.info]
-    assert any("Hindi" in v and "not supported" in v.lower() for v in info_values)
+    assert any("Hindi" in v and "Audio input not supported" in v for v in info_values)
 
 
 def test_audio_uploader_no_info_when_supported(app: AppTest) -> None:
@@ -363,6 +400,93 @@ def test_audio_uploader_no_info_when_supported(app: AppTest) -> None:
     # Default source is English (supported).
     info_values = [str(i.value) for i in app.info]
     assert not any("not supported" in v.lower() for v in info_values)
+
+
+# -- Mic widget ---------------------------------------------------------------
+
+
+def test_mic_widget_exists(app: AppTest) -> None:
+    assert len(app.get("audio_input")) == 1
+
+
+def test_mic_widget_enabled_for_supported_language(app: AppTest) -> None:
+    # Default source is English, which is supported.
+    assert not app.get("audio_input")[0].disabled
+
+
+def test_mic_widget_disabled_for_unsupported_language(app: AppTest) -> None:
+    # Hindi is in LANGUAGES but NOT in ASR_LANGUAGE_CODES.
+    app.selectbox[0].set_value("Hindi")
+    _rerun_with_mocks(app)
+
+    assert app.get("audio_input")[0].disabled
+
+
+def test_mic_widget_disabled_when_asr_load_fails() -> None:
+    with (
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            side_effect=RuntimeError("download failed"),
+        ),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+
+    assert at.get("audio_input")[0].disabled
+
+
+def test_mic_widget_help_present_when_unsupported(app: AppTest) -> None:
+    app.selectbox[0].set_value("Hindi")
+    _rerun_with_mocks(app)
+
+    help_text = app.get("audio_input")[0].help or ""
+    assert "Hindi" in help_text or "not supported" in help_text.lower()
+
+
+def test_mic_recording_fills_input_text_area() -> None:
+    at = _drive_mic_transcription(b"<bytes>", "hello world")
+    assert at.text_area[0].value == "hello world"
+
+
+def test_mic_transcription_failure_shows_warning() -> None:
+    fake_model = MagicMock()
+    fake_model.transcribe.side_effect = RuntimeError("kaboom")
+    fake_audio = np.zeros(16000, dtype=np.float32)
+
+    with (
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            return_value=fake_model,
+        ),
+        patch("soundfile.read", return_value=(fake_audio, 16000)),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+        at.session_state.mic_input = _FakeUploadedFile(b"<bytes>")
+        at.session_state._do_transcribe = True
+        at.session_state._transcribe_source = "mic"
+        at.run(timeout=60)
+
+    error_values = [e.value for e in at.error]
+    assert any("Transcription failed" in str(v) for v in error_values)
+
+
+def test_clear_mic_input_does_not_clear_input() -> None:
+    at = _drive_mic_transcription(b"<bytes>", "hello world")
+    assert at.text_area[0].value == "hello world"
+
+    # Simulate the user clearing the recording: value becomes None,
+    # but on_change still fires and sets _do_transcribe.
+    at.session_state.mic_input = None
+    at.session_state._do_transcribe = True
+    at.session_state._transcribe_source = "mic"
+    at.run(timeout=60)
+
+    assert at.text_area[0].value == "hello world"
 
 
 # -- Transcription flow -------------------------------------------------------

@@ -253,8 +253,6 @@ if "_do_translate" not in st.session_state:
     st.session_state._do_translate = False
 if "_do_transcribe" not in st.session_state:
     st.session_state._do_transcribe = False
-if "mic_input" not in st.session_state:
-    st.session_state.mic_input = None
 if "_transcribe_source" not in st.session_state:
     st.session_state._transcribe_source = None
 
@@ -268,6 +266,12 @@ def request_upload_transcribe() -> None:
     """Flag a transcription request from the file uploader."""
     st.session_state._do_transcribe = True
     st.session_state._transcribe_source = "upload"
+
+
+def request_mic_transcribe() -> None:
+    """Flag a transcription request from the mic widget."""
+    st.session_state._do_transcribe = True
+    st.session_state._transcribe_source = "mic"
 
 
 def swap_languages() -> None:
@@ -321,21 +325,32 @@ uploader_help = (
     )
 )
 if not asr_loaded:
-    st.info("ASR model not loaded; audio upload unavailable.")
+    st.info("ASR model not loaded; audio input unavailable.")
 elif not asr_supported:
     st.info(
-        f"Audio upload not supported for {st.session_state.source_lang}. "
+        f"Audio input not supported for {st.session_state.source_lang}. "
         f"Cohere Transcribe supports: {', '.join(ASR_LANGUAGE_CODES.keys())}."
     )
-st.file_uploader(
-    "Upload audio",
-    type=["wav", "mp3", "m4a", "flac", "ogg"],
-    key="audio_file",
-    on_change=request_upload_transcribe,
-    disabled=uploader_disabled,
-    help=uploader_help,
-    label_visibility="collapsed",
-)
+col_mic, col_upload = st.columns(2)
+with col_mic:
+    st.audio_input(
+        "Record audio",
+        key="mic_input",
+        on_change=request_mic_transcribe,
+        disabled=uploader_disabled,
+        help=uploader_help,
+        label_visibility="collapsed",
+    )
+with col_upload:
+    st.file_uploader(
+        "Upload audio",
+        type=["wav", "mp3", "m4a", "flac", "ogg"],
+        key="audio_file",
+        on_change=request_upload_transcribe,
+        disabled=uploader_disabled,
+        help=uploader_help,
+        label_visibility="collapsed",
+    )
 
 # -- Warning slot (above panels) ---------------------------------------------
 
