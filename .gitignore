@@ -28,3 +28,6 @@ __pycache__/
 
 # Superpowers-generated plans/specs
 docs/
+
+# Local test audio fixtures
+test-audio/
