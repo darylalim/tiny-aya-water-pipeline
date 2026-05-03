@@ -2,6 +2,8 @@ from unittest.mock import MagicMock, patch
 
 import streamlit_app
 from streamlit_app import (
+    ASR_LANGUAGE_CODES,
+    ASR_MODEL_ID,
     LANGUAGES,
     build_translation_prompt,
     clean_model_output,
@@ -183,3 +185,33 @@ def test_translate_text_uses_default_params(
     assert (
         mock_generate.call_args.kwargs["max_tokens"] == streamlit_app.DEFAULT_MAX_TOKENS
     )
+
+
+# -- ASR_MODEL_ID --------------------------------------------------------------
+
+
+def test_asr_model_id_is_mlx_8bit_repo() -> None:
+    assert ASR_MODEL_ID == "mlx-community/cohere-transcribe-03-2026-mlx-8bit"
+
+
+# -- ASR_LANGUAGE_CODES --------------------------------------------------------
+
+
+def test_asr_language_codes_has_14_entries() -> None:
+    assert len(ASR_LANGUAGE_CODES) == 14
+
+
+def test_asr_language_codes_all_in_languages_list() -> None:
+    assert set(ASR_LANGUAGE_CODES) <= set(LANGUAGES)
+
+
+def test_asr_language_codes_english_maps_to_en() -> None:
+    assert ASR_LANGUAGE_CODES["English"] == "en"
+
+
+def test_asr_language_codes_chinese_maps_to_zh() -> None:
+    assert ASR_LANGUAGE_CODES["Chinese"] == "zh"
+
+
+def test_asr_language_codes_arabic_maps_to_ar() -> None:
+    assert ASR_LANGUAGE_CODES["Arabic"] == "ar"

@@ -9,6 +9,24 @@ DEFAULT_TEMPERATURE: float = 0.1
 DEFAULT_MAX_TOKENS: int = 700
 TOP_P: float = 0.95
 
+ASR_MODEL_ID: str = "mlx-community/cohere-transcribe-03-2026-mlx-8bit"
+ASR_LANGUAGE_CODES: dict[str, str] = {
+    "English": "en",
+    "French": "fr",
+    "German": "de",
+    "Italian": "it",
+    "Spanish": "es",
+    "Portuguese": "pt",
+    "Greek": "el",
+    "Dutch": "nl",
+    "Polish": "pl",
+    "Chinese": "zh",
+    "Japanese": "ja",
+    "Korean": "ko",
+    "Vietnamese": "vi",
+    "Arabic": "ar",
+}
+
 # -- Languages ---------------------------------------------------------------
 # 67 languages across Europe, West Asia, South Asia, Asia Pacific, and Africa.
 
