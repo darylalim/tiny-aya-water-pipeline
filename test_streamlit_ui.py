@@ -17,6 +17,7 @@ def app() -> AppTest:
     """Create a patched AppTest instance with mocked model loading."""
     with (
         patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
         patch(
             "mlx_speech.generation.CohereAsrModel.from_path",
             return_value=MagicMock(),
@@ -31,6 +32,7 @@ def _rerun_with_mocks(app: AppTest) -> None:
     """Re-run the app with mocked model loading."""
     with (
         patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
         patch(
             "mlx_speech.generation.CohereAsrModel.from_path",
             return_value=MagicMock(),
@@ -43,6 +45,7 @@ def _run_inference_test(input_text: str, generate_result: str) -> AppTest:
     """Build a fresh AppTest, enter text, click Translate, and return it."""
     with (
         patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
         patch(
             "mlx_speech.generation.CohereAsrModel.from_path",
             return_value=MagicMock(),
@@ -86,6 +89,7 @@ def _drive_transcription(
 
     with (
         patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
         patch(
             "mlx_speech.generation.CohereAsrModel.from_path",
             return_value=fake_model,
@@ -288,6 +292,7 @@ def test_asr_model_load_does_not_show_error(app: AppTest) -> None:
 def test_asr_model_load_failure_shows_error() -> None:
     with (
         patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
         patch(
             "mlx_speech.generation.CohereAsrModel.from_path",
             side_effect=RuntimeError("download failed"),
@@ -323,6 +328,7 @@ def test_audio_uploader_disabled_for_unsupported_language(app: AppTest) -> None:
 def test_audio_uploader_disabled_when_asr_load_fails() -> None:
     with (
         patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
         patch(
             "mlx_speech.generation.CohereAsrModel.from_path",
             side_effect=RuntimeError("download failed"),
@@ -363,6 +369,7 @@ def test_transcription_failure_shows_warning() -> None:
 
     with (
         patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
         patch(
             "mlx_speech.generation.CohereAsrModel.from_path",
             return_value=fake_model,

@@ -203,9 +203,11 @@ def load_model() -> tuple[Any, Any]:
 @st.cache_resource
 def load_asr_model() -> Any:
     """Load the Cohere Transcribe MLX model once, cached for the session lifetime."""
+    from huggingface_hub import snapshot_download
     from mlx_speech.generation import CohereAsrModel
 
-    return CohereAsrModel.from_path(ASR_MODEL_ID)
+    local_dir = snapshot_download(repo_id=ASR_MODEL_ID)
+    return CohereAsrModel.from_path(local_dir)
 
 
 # -- Main page ----------------------------------------------------------------
