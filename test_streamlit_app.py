@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
 
+import numpy as np
+
 import streamlit_app
 from streamlit_app import (
     ASR_LANGUAGE_CODES,
@@ -7,6 +9,7 @@ from streamlit_app import (
     LANGUAGES,
     build_translation_prompt,
     clean_model_output,
+    transcribe_audio,
     translate_text,
 )
 
@@ -215,3 +218,89 @@ def test_asr_language_codes_chinese_maps_to_zh() -> None:
 
 def test_asr_language_codes_arabic_maps_to_ar() -> None:
     assert ASR_LANGUAGE_CODES["Arabic"] == "ar"
+
+
+# -- transcribe_audio ----------------------------------------------------------
+
+
+@patch("soundfile.read")
+def test_transcribe_audio_passes_language_code(mock_sf_read: MagicMock) -> None:
+    mock_sf_read.return_value = (np.array([0.1, 0.2], dtype=np.float32), 16000)
+    mock_model = MagicMock()
+    mock_model.transcribe.return_value = MagicMock(text="hola")
+
+    transcribe_audio(b"<bytes>", "Spanish", mock_model)
+
+    call_kwargs = mock_model.transcribe.call_args.kwargs
+    assert call_kwargs["language"] == "es"
+
+
+@patch("soundfile.read")
+def test_transcribe_audio_strips_whitespace(mock_sf_read: MagicMock) -> None:
+    mock_sf_read.return_value = (np.array([0.1, 0.2], dtype=np.float32), 16000)
+    mock_model = MagicMock()
+    mock_model.transcribe.return_value = MagicMock(text="  hi  ")
+
+    result = transcribe_audio(b"<bytes>", "English", mock_model)
+
+    assert result == "hi"
+
+
+@patch("soundfile.read")
+def test_transcribe_audio_downmixes_stereo(mock_sf_read: MagicMock) -> None:
+    stereo = np.array([[0.0, 1.0], [1.0, 0.0]], dtype=np.float32)  # shape (2, 2)
+    mock_sf_read.return_value = (stereo, 16000)
+    mock_model = MagicMock()
+    mock_model.transcribe.return_value = MagicMock(text="ok")
+
+    transcribe_audio(b"<bytes>", "English", mock_model)
+
+    audio_arg = mock_model.transcribe.call_args.kwargs["audio"]
+    assert audio_arg.ndim == 1
+    np.testing.assert_array_almost_equal(audio_arg, np.array([0.5, 0.5]))
+
+
+@patch("soundfile.read")
+def test_transcribe_audio_resamples_when_sr_not_16khz(mock_sf_read: MagicMock) -> None:
+    # 100 samples at 8000 Hz should become 200 samples at 16000 Hz
+    mock_sf_read.return_value = (
+        np.linspace(0.0, 1.0, 100, dtype=np.float32),
+        8000,
+    )
+    mock_model = MagicMock()
+    mock_model.transcribe.return_value = MagicMock(text="ok")
+
+    transcribe_audio(b"<bytes>", "English", mock_model)
+
+    audio_arg = mock_model.transcribe.call_args.kwargs["audio"]
+    assert mock_model.transcribe.call_args.kwargs["sample_rate"] == 16000
+    assert len(audio_arg) == 200
+
+
+@patch("soundfile.read")
+def test_transcribe_audio_skips_resample_when_sr_is_16khz(
+    mock_sf_read: MagicMock,
+) -> None:
+    audio = np.linspace(0.0, 1.0, 100, dtype=np.float32)
+    mock_sf_read.return_value = (audio, 16000)
+    mock_model = MagicMock()
+    mock_model.transcribe.return_value = MagicMock(text="ok")
+
+    transcribe_audio(b"<bytes>", "English", mock_model)
+
+    audio_arg = mock_model.transcribe.call_args.kwargs["audio"]
+    assert len(audio_arg) == 100
+    np.testing.assert_array_equal(audio_arg, audio)
+
+
+@patch("soundfile.read")
+def test_transcribe_audio_calls_model_transcribe_once(
+    mock_sf_read: MagicMock,
+) -> None:
+    mock_sf_read.return_value = (np.array([0.1, 0.2], dtype=np.float32), 16000)
+    mock_model = MagicMock()
+    mock_model.transcribe.return_value = MagicMock(text="ok")
+
+    transcribe_audio(b"<bytes>", "English", mock_model)
+
+    assert mock_model.transcribe.call_count == 1

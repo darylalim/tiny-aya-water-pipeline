@@ -157,6 +157,35 @@ def translate_text(
     return clean_model_output(result)
 
 
+def transcribe_audio(
+    audio_bytes: bytes,
+    language: str,
+    model: Any,
+) -> str:
+    """Decode audio bytes → mono 16 kHz float32 → transcribe → cleaned text."""
+    import io
+
+    import numpy as np
+    import soundfile as sf
+
+    audio, sample_rate = sf.read(
+        io.BytesIO(audio_bytes), dtype="float32", always_2d=False
+    )
+    if audio.ndim > 1:
+        audio = audio.mean(axis=1)
+    if sample_rate != 16000:
+        old_len = len(audio)
+        new_len = int(round(old_len * 16000 / sample_rate))
+        audio = np.interp(
+            np.linspace(0, old_len - 1, new_len),
+            np.arange(old_len),
+            audio,
+        ).astype(np.float32)
+    lang_code = ASR_LANGUAGE_CODES[language]
+    result = model.transcribe(audio=audio, sample_rate=16000, language=lang_code)
+    return result.text.strip()
+
+
 import streamlit as st  # noqa: E402
 
 
