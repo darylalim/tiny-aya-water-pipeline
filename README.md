@@ -6,7 +6,7 @@ Translate text across 67 languages — all running privately on your Mac. Powere
 
 - Side-by-side text translation
 - Swap and download controls
-- Audio file upload with on-device transcription (English, French, German, Italian, Spanish, Portuguese, Greek, Dutch, Polish, Mandarin, Japanese, Korean, Vietnamese, Arabic) via [Cohere Transcribe](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026)
+- Audio file upload with on-device transcription in 14 languages via [Cohere Transcribe](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026)
 - 67 languages across Europe, West Asia, South Asia, Asia Pacific, and Africa
 - 8-bit quantized MLX inference on Apple Silicon
 - Local inference — no API key required
