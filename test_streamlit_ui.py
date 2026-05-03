@@ -413,3 +413,42 @@ def test_clear_uploaded_file_does_not_clear_input() -> None:
     at.run(timeout=60)
 
     assert at.text_area[0].value == "hello world"
+
+
+def test_unsupported_language_at_upload_time_shows_warning() -> None:
+    """If audio is uploaded while source language is unsupported, surface a warning.
+
+    This is the third defense layer — the st.info banner and disabled flag
+    on the uploader are upstream guards; this test exercises the runtime
+    safety net inside the transcription block.
+    """
+    at = _drive_transcription(b"<bytes>", "irrelevant", source_lang="Hindi")
+
+    warning_values = [str(w.value) for w in at.warning]
+    assert any("not supported" in v.lower() for v in warning_values)
+
+
+def test_decode_error_shows_specific_warning() -> None:
+    """sf.LibsndfileError surfaces the format-specific message, not the generic one."""
+    import soundfile as sf
+
+    with (
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            return_value=MagicMock(),
+        ),
+        patch(
+            "soundfile.read",
+            side_effect=sf.LibsndfileError("Format not recognised"),
+        ),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+        at.session_state.audio_file = _FakeUploadedFile(b"<bytes>")
+        at.session_state._do_transcribe = True
+        at.run(timeout=60)
+
+    error_values = [str(e.value) for e in at.error]
+    assert any("Could not decode" in v for v in error_values)
