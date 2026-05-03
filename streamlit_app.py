@@ -12,6 +12,7 @@ DEFAULT_MAX_TOKENS: int = 700
 TOP_P: float = 0.95
 
 ASR_MODEL_ID: str = "mlx-community/cohere-transcribe-03-2026-mlx-8bit"
+ASR_MODEL_SUBDIR: str = "mlx-int8"  # quantization subfolder within the HF repo
 ASR_LANGUAGE_CODES: dict[str, str] = {
     "English": "en",
     "French": "fr",
@@ -203,11 +204,13 @@ def load_model() -> tuple[Any, Any]:
 @st.cache_resource
 def load_asr_model() -> Any:
     """Load the Cohere Transcribe MLX model once, cached for the session lifetime."""
+    from pathlib import Path
+
     from huggingface_hub import snapshot_download
     from mlx_speech.generation import CohereAsrModel
 
-    local_dir = snapshot_download(repo_id=ASR_MODEL_ID)
-    return CohereAsrModel.from_path(local_dir)
+    local_dir = Path(snapshot_download(repo_id=ASR_MODEL_ID))
+    return CohereAsrModel.from_path(local_dir / ASR_MODEL_SUBDIR)
 
 
 # -- Main page ----------------------------------------------------------------
