@@ -147,8 +147,8 @@ def load_model() -> tuple[Any, Any]:
     """Load model and tokenizer once, cached for the session lifetime."""
     from mlx_lm import load
 
-    model, tokenizer = load(MODEL_ID)
-    return model, tokenizer
+    loaded = load(MODEL_ID)
+    return loaded[0], loaded[1]
 
 
 # -- Main page ----------------------------------------------------------------
@@ -251,9 +251,7 @@ with col_output:
 
 # -- Controls row -------------------------------------------------------------
 
-sub_translate, sub_download = st.columns(
-    2, vertical_alignment="center", gap="small"
-)
+sub_translate, sub_download = st.columns(2, vertical_alignment="center", gap="small")
 with sub_translate:
     st.button(
         "Translate",
