@@ -14,7 +14,13 @@ def clear_st_cache() -> None:
 @pytest.fixture
 def app() -> AppTest:
     """Create a patched AppTest instance with mocked model loading."""
-    with patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())):
+    with (
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            return_value=MagicMock(),
+        ),
+    ):
         at = AppTest.from_file("streamlit_app.py")
         at.run(timeout=60)
     return at
@@ -22,7 +28,13 @@ def app() -> AppTest:
 
 def _rerun_with_mocks(app: AppTest) -> None:
     """Re-run the app with mocked model loading."""
-    with patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())):
+    with (
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            return_value=MagicMock(),
+        ),
+    ):
         app.run(timeout=60)
 
 
@@ -30,6 +42,10 @@ def _run_inference_test(input_text: str, generate_result: str) -> AppTest:
     """Build a fresh AppTest, enter text, click Translate, and return it."""
     with (
         patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            return_value=MagicMock(),
+        ),
         patch("mlx_lm.generate", return_value=generate_result),
     ):
         at = AppTest.from_file("streamlit_app.py")
@@ -211,3 +227,27 @@ def test_model_load_failure_disables_translate_button() -> None:
         at.run(timeout=60)
 
     assert at.button("translate").disabled
+
+
+# -- ASR model load -----------------------------------------------------------
+
+
+def test_asr_model_load_does_not_show_error(app: AppTest) -> None:
+    """When ASR loads cleanly, no error is shown."""
+    error_values = [e.value for e in app.error]
+    assert not any("ASR" in str(v) or "Cohere" in str(v) for v in error_values)
+
+
+def test_asr_model_load_failure_shows_error() -> None:
+    with (
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            side_effect=RuntimeError("download failed"),
+        ),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+
+    error_values = [e.value for e in at.error]
+    assert any("Failed to load ASR model" in str(v) for v in error_values)

@@ -222,6 +222,17 @@ except Exception as e:
     model, tokenizer = None, None
     model_loaded = False
 
+# -- ASR model loading --------------------------------------------------------
+
+try:
+    with st.spinner("Loading ASR model..."):
+        asr_model = load_asr_model()
+    asr_loaded = True
+except Exception as e:
+    st.error(f"Failed to load ASR model: {e}")
+    asr_model = None
+    asr_loaded = False
+
 # -- Session state defaults ---------------------------------------------------
 
 if "source_lang" not in st.session_state:
