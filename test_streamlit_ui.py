@@ -497,12 +497,6 @@ def test_upload_fills_input_text_area() -> None:
     assert at.text_area[0].value == "hello world"
 
 
-def test_upload_does_not_fire_translate() -> None:
-    at = _drive_transcription(b"<bytes>", "hello world")
-    # Output should still be empty — translation was never requested.
-    assert at.text_area[1].value == ""
-
-
 def test_transcription_failure_shows_warning() -> None:
     fake_model = MagicMock()
     fake_model.transcribe.side_effect = RuntimeError("kaboom")
@@ -580,3 +574,88 @@ def test_decode_error_shows_specific_warning() -> None:
 
     error_values = [str(e.value) for e in at.error]
     assert any("Could not decode" in v for v in error_values)
+
+
+# -- Auto-translate chain -----------------------------------------------------
+
+
+def test_upload_auto_translates() -> None:
+    """After a successful upload+transcription, translation runs automatically."""
+    fake_asr = MagicMock()
+    fake_asr.transcribe.return_value = MagicMock(text="hello")
+    fake_audio = np.zeros(16000, dtype=np.float32)
+
+    with (
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            return_value=fake_asr,
+        ),
+        patch("soundfile.read", return_value=(fake_audio, 16000)),
+        patch("mlx_lm.generate", return_value="bonjour"),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+        at.session_state.audio_file = _FakeUploadedFile(b"<bytes>")
+        at.session_state._do_transcribe = True
+        at.session_state._transcribe_source = "upload"
+        at.run(timeout=60)
+
+    assert at.text_area[0].value == "hello"
+    assert at.text_area[1].value == "bonjour"
+
+
+def test_mic_recording_auto_translates() -> None:
+    """After a successful mic recording+transcription, auto-translate runs."""
+    fake_asr = MagicMock()
+    fake_asr.transcribe.return_value = MagicMock(text="hello")
+    fake_audio = np.zeros(16000, dtype=np.float32)
+
+    with (
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            return_value=fake_asr,
+        ),
+        patch("soundfile.read", return_value=(fake_audio, 16000)),
+        patch("mlx_lm.generate", return_value="bonjour"),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+        at.session_state.mic_input = _FakeUploadedFile(b"<bytes>")
+        at.session_state._do_transcribe = True
+        at.session_state._transcribe_source = "mic"
+        at.run(timeout=60)
+
+    assert at.text_area[0].value == "hello"
+    assert at.text_area[1].value == "bonjour"
+
+
+def test_auto_translate_skipped_when_translation_model_not_loaded() -> None:
+    """If the translation model failed to load, transcription still works but
+    auto-translate is skipped (the gate prevents calling translate_text with
+    model=None, which would crash)."""
+    fake_asr = MagicMock()
+    fake_asr.transcribe.return_value = MagicMock(text="hello")
+    fake_audio = np.zeros(16000, dtype=np.float32)
+
+    with (
+        patch("mlx_lm.load", side_effect=RuntimeError("download failed")),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            return_value=fake_asr,
+        ),
+        patch("soundfile.read", return_value=(fake_audio, 16000)),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+        at.session_state.mic_input = _FakeUploadedFile(b"<bytes>")
+        at.session_state._do_transcribe = True
+        at.session_state._transcribe_source = "mic"
+        at.run(timeout=60)
+
+    assert at.text_area[0].value == "hello"
+    assert at.text_area[1].value == ""

@@ -385,6 +385,8 @@ if st.session_state._do_transcribe:
             warning_slot.error(f"Transcription failed: {e}")
         else:
             st.session_state.translate_input = transcript
+            if model_loaded:
+                st.session_state._do_translate = True
 
 # -- Side-by-side text panels ------------------------------------------------
 
