@@ -169,7 +169,6 @@ def transcribe_audio(
     import io
 
     import numpy as np
-    import soundfile as sf
 
     audio, sample_rate = sf.read(
         io.BytesIO(audio_bytes), dtype="float32", always_2d=False
