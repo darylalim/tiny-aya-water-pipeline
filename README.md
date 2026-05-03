@@ -14,6 +14,7 @@ Translate text across 67 languages — all running privately on your Mac. Powere
 ## Prerequisites
 
 - Apple Silicon Mac
+- 16 GB+ RAM recommended (two MLX models load to ~6 GB)
 - Python 3.13+
 - [uv](https://docs.astral.sh/uv/)
 

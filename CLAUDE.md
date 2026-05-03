@@ -27,7 +27,7 @@ uv run ty check streamlit_app.py                             # type check
 
 ## Conventions
 
-- Pure functions are defined above `import streamlit` so they can be imported and tested without Streamlit
+- Pure functions are defined above `import streamlit` with deferred imports for heavy deps (`mlx_lm`, `mlx_speech`) inside their bodies, so tests can patch upstream libraries without loading the model stack
 - Config is hardcoded as module-level constants (`MODEL_ID`, `ASR_MODEL_ID`, `ASR_MODEL_SUBDIR`, `ASR_LANGUAGE_CODES`, `DEFAULT_TEMPERATURE`, `DEFAULT_MAX_TOKENS`, `TOP_P`) at the top of `streamlit_app.py`
 - Language selectboxes use the flat `LANGUAGES` list (67 items) with collapsed labels and Streamlit's built-in type-to-search
 - Swap button (`:material/swap_horiz:`, `type="tertiary"`, `help=` tooltip) flips languages via `st.session_state` and moves output into input
