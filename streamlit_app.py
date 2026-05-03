@@ -316,6 +316,14 @@ uploader_help = (
         "Cohere Transcribe supports: " + ", ".join(ASR_LANGUAGE_CODES.keys())
     )
 )
+if not asr_loaded:
+    st.caption(":material/info: ASR model not loaded; audio upload unavailable.")
+elif not asr_supported:
+    st.caption(
+        f":material/info: Audio upload not supported for "
+        f"{st.session_state.source_lang}. Cohere Transcribe supports: "
+        f"{', '.join(ASR_LANGUAGE_CODES.keys())}."
+    )
 st.file_uploader(
     "Upload audio",
     type=["wav", "mp3", "m4a", "flac", "ogg"],

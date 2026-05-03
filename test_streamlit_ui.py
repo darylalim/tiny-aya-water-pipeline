@@ -348,6 +348,22 @@ def test_audio_uploader_help_present_when_unsupported(app: AppTest) -> None:
     assert "Hindi" in help_text or "not supported" in help_text.lower()
 
 
+def test_audio_uploader_caption_visible_when_unsupported(app: AppTest) -> None:
+    """A visible caption explains why upload is unavailable for unsupported langs."""
+    app.selectbox[0].set_value("Hindi")
+    _rerun_with_mocks(app)
+
+    caption_values = [str(c.value) for c in app.caption]
+    assert any("Hindi" in v and "not supported" in v.lower() for v in caption_values)
+
+
+def test_audio_uploader_no_caption_when_supported(app: AppTest) -> None:
+    """No 'not supported' caption appears for languages Cohere Transcribe handles."""
+    # Default source is English (supported).
+    caption_values = [str(c.value) for c in app.caption]
+    assert not any("not supported" in v.lower() for v in caption_values)
+
+
 # -- Transcription flow -------------------------------------------------------
 
 
