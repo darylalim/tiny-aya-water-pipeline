@@ -253,6 +253,10 @@ if "_do_translate" not in st.session_state:
     st.session_state._do_translate = False
 if "_do_transcribe" not in st.session_state:
     st.session_state._do_transcribe = False
+if "mic_input" not in st.session_state:
+    st.session_state.mic_input = None
+if "_transcribe_source" not in st.session_state:
+    st.session_state._transcribe_source = None
 
 
 def request_translate() -> None:
@@ -260,9 +264,10 @@ def request_translate() -> None:
     st.session_state._do_translate = True
 
 
-def request_transcribe() -> None:
-    """Flag that a transcription was requested (processed after the uploader row)."""
+def request_upload_transcribe() -> None:
+    """Flag a transcription request from the file uploader."""
     st.session_state._do_transcribe = True
+    st.session_state._transcribe_source = "upload"
 
 
 def swap_languages() -> None:
@@ -326,7 +331,7 @@ st.file_uploader(
     "Upload audio",
     type=["wav", "mp3", "m4a", "flac", "ogg"],
     key="audio_file",
-    on_change=request_transcribe,
+    on_change=request_upload_transcribe,
     disabled=uploader_disabled,
     help=uploader_help,
     label_visibility="collapsed",
@@ -339,9 +344,15 @@ warning_slot = st.container()
 # -- Process transcription request -------------------------------------------
 
 if st.session_state._do_transcribe:
+    source = st.session_state._transcribe_source
     st.session_state._do_transcribe = False
-    uploaded = st.session_state.audio_file
-    if uploaded is None:
+    st.session_state._transcribe_source = None
+
+    audio = (
+        st.session_state.mic_input if source == "mic" else st.session_state.audio_file
+    )
+
+    if audio is None:
         pass
     elif st.session_state.source_lang not in ASR_LANGUAGE_CODES:
         warning_slot.warning("Audio language not supported.")
@@ -349,14 +360,12 @@ if st.session_state._do_transcribe:
         try:
             with st.spinner("Transcribing..."):
                 transcript = transcribe_audio(
-                    uploaded.getvalue(),
+                    audio.getvalue(),
                     st.session_state.source_lang,
                     asr_model,
                 )
         except sf.LibsndfileError:
-            warning_slot.error(
-                "Could not decode audio file. Try WAV/FLAC if MP3 fails."
-            )
+            warning_slot.error("Could not decode audio. Try WAV/FLAC if MP3 fails.")
         except Exception as e:
             warning_slot.error(f"Transcription failed: {e}")
         else:

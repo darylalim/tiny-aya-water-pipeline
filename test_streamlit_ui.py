@@ -103,6 +103,7 @@ def _drive_transcription(
             at.run(timeout=60)
         at.session_state.audio_file = _FakeUploadedFile(audio_bytes)
         at.session_state._do_transcribe = True
+        at.session_state._transcribe_source = "upload"
         at.run(timeout=60)
     return at
 
@@ -396,6 +397,7 @@ def test_transcription_failure_shows_warning() -> None:
         at.run(timeout=60)
         at.session_state.audio_file = _FakeUploadedFile(b"<bytes>")
         at.session_state._do_transcribe = True
+        at.session_state._transcribe_source = "upload"
         at.run(timeout=60)
 
     error_values = [e.value for e in at.error]
@@ -410,6 +412,7 @@ def test_clear_uploaded_file_does_not_clear_input() -> None:
     # but on_change still fires and sets _do_transcribe.
     at.session_state.audio_file = None
     at.session_state._do_transcribe = True
+    at.session_state._transcribe_source = "upload"
     at.run(timeout=60)
 
     assert at.text_area[0].value == "hello world"
@@ -448,6 +451,7 @@ def test_decode_error_shows_specific_warning() -> None:
         at.run(timeout=60)
         at.session_state.audio_file = _FakeUploadedFile(b"<bytes>")
         at.session_state._do_transcribe = True
+        at.session_state._transcribe_source = "upload"
         at.run(timeout=60)
 
     error_values = [str(e.value) for e in at.error]
