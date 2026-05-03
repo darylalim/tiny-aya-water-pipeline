@@ -3,9 +3,12 @@ name = "tiny-aya-global-translate"
 version = "0.1.0"
 description = "Translate text across 67 languages with mlx-community/tiny-aya-global-8bit-mlx on Apple Silicon"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 dependencies = [
     "mlx-lm>=0.28.0",
+    "mlx-speech>=0.4.0",
+    "numpy",
+    "soundfile",
     "streamlit>=1.55.0",
 ]
 
@@ -17,7 +20,7 @@ dev = [
 ]
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py313"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]

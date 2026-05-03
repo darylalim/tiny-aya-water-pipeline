@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 import streamlit as st
 from streamlit.testing.v1 import AppTest
@@ -14,7 +15,14 @@ def clear_st_cache() -> None:
 @pytest.fixture
 def app() -> AppTest:
     """Create a patched AppTest instance with mocked model loading."""
-    with patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())):
+    with (
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            return_value=MagicMock(),
+        ),
+    ):
         at = AppTest.from_file("streamlit_app.py")
         at.run(timeout=60)
     return at
@@ -22,7 +30,14 @@ def app() -> AppTest:
 
 def _rerun_with_mocks(app: AppTest) -> None:
     """Re-run the app with mocked model loading."""
-    with patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())):
+    with (
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            return_value=MagicMock(),
+        ),
+    ):
         app.run(timeout=60)
 
 
@@ -30,12 +45,64 @@ def _run_inference_test(input_text: str, generate_result: str) -> AppTest:
     """Build a fresh AppTest, enter text, click Translate, and return it."""
     with (
         patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            return_value=MagicMock(),
+        ),
         patch("mlx_lm.generate", return_value=generate_result),
     ):
         at = AppTest.from_file("streamlit_app.py")
         at.run(timeout=60)
         at.text_area[0].set_value(input_text)
         at.button("translate").click()
+        at.run(timeout=60)
+    return at
+
+
+class _FakeUploadedFile:
+    """Stand-in for streamlit.runtime.uploaded_file_manager.UploadedFile."""
+
+    def __init__(self, data: bytes) -> None:
+        self._data = data
+
+    def getvalue(self) -> bytes:
+        return self._data
+
+
+def _drive_transcription(
+    audio_bytes: bytes,
+    transcribe_text: str,
+    *,
+    source_lang: str = "English",
+) -> AppTest:
+    """Build a fresh AppTest, simulate an upload, and return the rerun result.
+
+    AppTest doesn't have a documented public API for driving st.file_uploader,
+    so we set the widget's session_state value and the processing flag
+    directly, then run the script. This exercises the transcription block
+    exactly the way Streamlit's on_change callback would.
+    """
+    fake_model = MagicMock()
+    fake_model.transcribe.return_value = MagicMock(text=transcribe_text)
+    fake_audio = np.zeros(16000, dtype=np.float32)
+
+    with (
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            return_value=fake_model,
+        ),
+        patch("soundfile.read", return_value=(fake_audio, 16000)),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+        if source_lang != "English":
+            at.selectbox[0].set_value(source_lang)
+            at.run(timeout=60)
+        at.session_state.audio_file = _FakeUploadedFile(audio_bytes)
+        at.session_state._do_transcribe = True
         at.run(timeout=60)
     return at
 
@@ -211,3 +278,138 @@ def test_model_load_failure_disables_translate_button() -> None:
         at.run(timeout=60)
 
     assert at.button("translate").disabled
+
+
+# -- ASR model load -----------------------------------------------------------
+
+
+def test_asr_model_load_does_not_show_error(app: AppTest) -> None:
+    """When ASR loads cleanly, no error is shown."""
+    error_values = [e.value for e in app.error]
+    assert not any("ASR" in str(v) or "Cohere" in str(v) for v in error_values)
+
+
+def test_asr_model_load_failure_shows_error() -> None:
+    with (
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            side_effect=RuntimeError("download failed"),
+        ),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+
+    error_values = [e.value for e in at.error]
+    assert any("Failed to load ASR model" in str(v) for v in error_values)
+
+
+# -- Audio uploader -----------------------------------------------------------
+
+
+def test_audio_uploader_exists(app: AppTest) -> None:
+    assert len(app.get("file_uploader")) == 1
+
+
+def test_audio_uploader_enabled_for_supported_language(app: AppTest) -> None:
+    # Default source is English, which is supported.
+    assert not app.get("file_uploader")[0].disabled
+
+
+def test_audio_uploader_disabled_for_unsupported_language(app: AppTest) -> None:
+    # Hindi is in LANGUAGES but NOT in ASR_LANGUAGE_CODES.
+    app.selectbox[0].set_value("Hindi")
+    _rerun_with_mocks(app)
+
+    assert app.get("file_uploader")[0].disabled
+
+
+def test_audio_uploader_disabled_when_asr_load_fails() -> None:
+    with (
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            side_effect=RuntimeError("download failed"),
+        ),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+
+    assert at.get("file_uploader")[0].disabled
+
+
+def test_audio_uploader_help_present_when_unsupported(app: AppTest) -> None:
+    app.selectbox[0].set_value("Hindi")
+    _rerun_with_mocks(app)
+
+    help_text = app.get("file_uploader")[0].help or ""
+    assert "Hindi" in help_text or "not supported" in help_text.lower()
+
+
+def test_audio_uploader_info_visible_when_unsupported(app: AppTest) -> None:
+    """A visible st.info explains why upload is unavailable for unsupported langs."""
+    app.selectbox[0].set_value("Hindi")
+    _rerun_with_mocks(app)
+
+    info_values = [str(i.value) for i in app.info]
+    assert any("Hindi" in v and "not supported" in v.lower() for v in info_values)
+
+
+def test_audio_uploader_no_info_when_supported(app: AppTest) -> None:
+    """No 'not supported' info box appears for languages Cohere Transcribe handles."""
+    # Default source is English (supported).
+    info_values = [str(i.value) for i in app.info]
+    assert not any("not supported" in v.lower() for v in info_values)
+
+
+# -- Transcription flow -------------------------------------------------------
+
+
+def test_upload_fills_input_text_area() -> None:
+    at = _drive_transcription(b"<bytes>", "hello world")
+    assert at.text_area[0].value == "hello world"
+
+
+def test_upload_does_not_fire_translate() -> None:
+    at = _drive_transcription(b"<bytes>", "hello world")
+    # Output should still be empty — translation was never requested.
+    assert at.text_area[1].value == ""
+
+
+def test_transcription_failure_shows_warning() -> None:
+    fake_model = MagicMock()
+    fake_model.transcribe.side_effect = RuntimeError("kaboom")
+    fake_audio = np.zeros(16000, dtype=np.float32)
+
+    with (
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            return_value=fake_model,
+        ),
+        patch("soundfile.read", return_value=(fake_audio, 16000)),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+        at.session_state.audio_file = _FakeUploadedFile(b"<bytes>")
+        at.session_state._do_transcribe = True
+        at.run(timeout=60)
+
+    error_values = [e.value for e in at.error]
+    assert any("Transcription failed" in str(v) for v in error_values)
+
+
+def test_clear_uploaded_file_does_not_clear_input() -> None:
+    at = _drive_transcription(b"<bytes>", "hello world")
+    assert at.text_area[0].value == "hello world"
+
+    # Simulate the user clicking the X on the uploader: file becomes None,
+    # but on_change still fires and sets _do_transcribe.
+    at.session_state.audio_file = None
+    at.session_state._do_transcribe = True
+    at.run(timeout=60)
+
+    assert at.text_area[0].value == "hello world"
