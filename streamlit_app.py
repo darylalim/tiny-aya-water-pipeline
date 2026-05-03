@@ -245,11 +245,18 @@ if "translate_output" not in st.session_state:
     st.session_state.translate_output = ""
 if "_do_translate" not in st.session_state:
     st.session_state._do_translate = False
+if "_do_transcribe" not in st.session_state:
+    st.session_state._do_transcribe = False
 
 
 def request_translate() -> None:
     """Flag that a translation was requested (processed after controls row)."""
     st.session_state._do_translate = True
+
+
+def request_transcribe() -> None:
+    """Flag that a transcription was requested (processed after the uploader row)."""
+    st.session_state._do_transcribe = True
 
 
 def swap_languages() -> None:
@@ -289,6 +296,28 @@ with col_to:
         key="target_lang",
         label_visibility="collapsed",
     )
+
+# -- Audio upload row ---------------------------------------------------------
+
+asr_supported = st.session_state.source_lang in ASR_LANGUAGE_CODES
+uploader_disabled = not asr_loaded or not asr_supported
+uploader_help = (
+    None
+    if asr_supported
+    else (
+        f"Audio transcription not supported for {st.session_state.source_lang}. "
+        "Cohere Transcribe supports: " + ", ".join(ASR_LANGUAGE_CODES.keys())
+    )
+)
+st.file_uploader(
+    "Upload audio",
+    type=["wav", "mp3", "m4a", "flac", "ogg"],
+    key="audio_file",
+    on_change=request_transcribe,
+    disabled=uploader_disabled,
+    help=uploader_help,
+    label_visibility="collapsed",
+)
 
 # -- Warning slot (above panels) ---------------------------------------------
 

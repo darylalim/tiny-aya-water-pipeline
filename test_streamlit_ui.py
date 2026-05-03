@@ -251,3 +251,45 @@ def test_asr_model_load_failure_shows_error() -> None:
 
     error_values = [e.value for e in at.error]
     assert any("Failed to load ASR model" in str(v) for v in error_values)
+
+
+# -- Audio uploader -----------------------------------------------------------
+
+
+def test_audio_uploader_exists(app: AppTest) -> None:
+    assert len(app.get("file_uploader")) == 1
+
+
+def test_audio_uploader_enabled_for_supported_language(app: AppTest) -> None:
+    # Default source is English, which is supported.
+    assert not app.get("file_uploader")[0].disabled
+
+
+def test_audio_uploader_disabled_for_unsupported_language(app: AppTest) -> None:
+    # Hindi is in LANGUAGES but NOT in ASR_LANGUAGE_CODES.
+    app.selectbox[0].set_value("Hindi")
+    _rerun_with_mocks(app)
+
+    assert app.get("file_uploader")[0].disabled
+
+
+def test_audio_uploader_disabled_when_asr_load_fails() -> None:
+    with (
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            side_effect=RuntimeError("download failed"),
+        ),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+
+    assert at.get("file_uploader")[0].disabled
+
+
+def test_audio_uploader_help_present_when_unsupported(app: AppTest) -> None:
+    app.selectbox[0].set_value("Hindi")
+    _rerun_with_mocks(app)
+
+    help_text = app.get("file_uploader")[0].help or ""
+    assert "Hindi" in help_text or "not supported" in help_text.lower()
