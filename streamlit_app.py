@@ -317,12 +317,11 @@ uploader_help = (
     )
 )
 if not asr_loaded:
-    st.caption(":material/info: ASR model not loaded; audio upload unavailable.")
+    st.info("ASR model not loaded; audio upload unavailable.")
 elif not asr_supported:
-    st.caption(
-        f":material/info: Audio upload not supported for "
-        f"{st.session_state.source_lang}. Cohere Transcribe supports: "
-        f"{', '.join(ASR_LANGUAGE_CODES.keys())}."
+    st.info(
+        f"Audio upload not supported for {st.session_state.source_lang}. "
+        f"Cohere Transcribe supports: {', '.join(ASR_LANGUAGE_CODES.keys())}."
     )
 st.file_uploader(
     "Upload audio",
