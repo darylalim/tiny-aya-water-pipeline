@@ -198,6 +198,14 @@ def load_model() -> tuple[Any, Any]:
     return loaded[0], loaded[1]
 
 
+@st.cache_resource
+def load_asr_model() -> Any:
+    """Load the Cohere Transcribe MLX model once, cached for the session lifetime."""
+    from mlx_speech.generation import CohereAsrModel
+
+    return CohereAsrModel.from_path(ASR_MODEL_ID)
+
+
 # -- Main page ----------------------------------------------------------------
 
 st.title("Tiny Aya Global Translate")
