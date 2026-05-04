@@ -1,6 +1,6 @@
 ## Project
 
-Streamlit app for translating text across 67 languages using the `mlx-community/tiny-aya-global-8bit-mlx` model with local MLX inference on Apple Silicon.
+Streamlit app for translating text across 67 languages using `mlx-community/tiny-aya-global-8bit-mlx` with local MLX inference on Apple Silicon. Voice and audio-file input (mic recording or upload) is transcribed via Cohere Transcribe (14 source languages) and auto-translated.
 
 ## Stack
 
@@ -31,17 +31,21 @@ uv run ty check streamlit_app.py                             # type check
 - Config is hardcoded as module-level constants (`MODEL_ID`, `ASR_MODEL_ID`, `ASR_MODEL_SUBDIR`, `ASR_LANGUAGE_CODES`, `DEFAULT_TEMPERATURE`, `DEFAULT_MAX_TOKENS`, `TOP_P`) at the top of `streamlit_app.py`
 - Language selectboxes use the flat `LANGUAGES` list (67 items) with collapsed labels and Streamlit's built-in type-to-search
 - Swap button (`:material/swap_horiz:`, `type="tertiary"`, `help=` tooltip) flips languages via `st.session_state` and moves output into input
-- Audio uploader (`st.file_uploader`) sits between the language bar and the warning slot; the transcription block must run before the input `text_area` renders since Streamlit raises `StreamlitAPIException` if you mutate a keyed widget's session state after it's been rendered
+- Audio inputs are `st.columns(2)`: `st.audio_input` (mic, left) and `st.file_uploader` (right), between the language bar and the warning slot; both widgets share `uploader_disabled` / `uploader_help`
+- The transcription block must run before the input `text_area` renders since Streamlit raises `StreamlitAPIException` if you mutate a keyed widget's session state after it's been rendered
+- Source-tag pattern: `request_mic_transcribe` and `request_upload_transcribe` set `_do_transcribe = True` and `_transcribe_source = "mic" | "upload"`; the transcription block reads the tag to choose between `st.session_state.mic_input` and `st.session_state.audio_file`
+- Auto-translate chain: on a successful transcription, the success branch sets `_do_translate = True` (gated on `model_loaded`); the existing translation processing block consumes it later in the same script pass
+- Don't pre-initialize a session-state key that a widget claims via `key=` — Streamlit raises `StreamlitValueAssignmentNotAllowedError`. `mic_input` and `audio_file` are never set in the session-state defaults; non-widget flags like `_transcribe_source` are initialized normally
 - Side-by-side input/output `st.text_area()` (output bound via `value=`, disabled)
 - Translate button (`type="primary"`, `use_container_width=True`) uses a callback + flag pattern (`_do_translate`) and `st.rerun()` to update output
 - Download button (`type="secondary"`, `use_container_width=True`) uses `st.download_button` to save translation as `translation.txt`
 - Controls row is `st.columns(2)`, mirroring the side-by-side input/output panels
-- `ASR_LANGUAGE_CODES` is the single source of truth for which 14 of the 67 `LANGUAGES` the audio uploader supports; unsupported source languages disable the uploader and show an `st.info` banner explaining why
+- `ASR_LANGUAGE_CODES` is the single source of truth for which 14 of the 67 `LANGUAGES` support audio input; unsupported source languages disable both audio widgets and show an `st.info` banner explaining why
 - Translation model loads via `@st.cache_resource def load_model()` using `mlx_lm.load`
 - ASR model loads via `@st.cache_resource def load_asr_model()`, which calls `huggingface_hub.snapshot_download(repo_id=ASR_MODEL_ID)` then passes `local_dir / ASR_MODEL_SUBDIR` (`"mlx-int8"`) to `CohereAsrModel.from_path` — `from_path` expects a literal directory containing `config.json`, not an HF repo id
 - `translate_text` builds a chat prompt, applies the tokenizer chat template, samples via `make_sampler(temp=, top_p=)`, and generates with `mlx_lm.generate`
 - `transcribe_audio` accepts raw bytes (not Streamlit's `UploadedFile`) so it's trivially mockable; decodes via `soundfile`, downmixes stereo with `mean(axis=1)`, and resamples to 16 kHz with `numpy.interp`
 - `clean_model_output` strips whitespace and the `<|END_RESPONSE|>` token leaked by the model
-- UI tests use `streamlit.testing.v1.AppTest`; mocks target upstream libraries (`mlx_lm`, `mlx_speech`, `huggingface_hub`, `soundfile`) because AppTest runs scripts via `exec()`; widgets without named accessors (download button, file uploader) are accessed via `at.get(...)[0]`
-- UI tests drive transcription by setting `st.session_state.audio_file` (with a `_FakeUploadedFile`) and `_do_transcribe` directly, then calling `at.run(...)` — AppTest has no public API for `st.file_uploader.set_value(...)`
+- UI tests use `streamlit.testing.v1.AppTest`; mocks target upstream libraries (`mlx_lm`, `mlx_speech`, `huggingface_hub`, `soundfile`) because AppTest runs scripts via `exec()`; widgets without named accessors (audio input, file uploader, download button) are accessed via `at.get(...)[0]`
+- UI tests drive transcription via `_drive_transcription` (sets `audio_file` + `_transcribe_source = "upload"`) or `_drive_mic_transcription` (sets `mic_input` + `_transcribe_source = "mic"`), then call `at.run(...)` — AppTest has no public API for either widget's value setter
 - The app bundles two models: `mlx-community/tiny-aya-global-8bit-mlx` (translation, CC-BY-NC, non-commercial only) and `mlx-community/cohere-transcribe-03-2026-mlx-8bit` (ASR, Apache 2.0); the combined product is non-commercial
