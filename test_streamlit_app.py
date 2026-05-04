@@ -11,6 +11,7 @@ from streamlit_app import (
     build_translation_prompt,
     clean_model_output,
     decode_audio,
+    detect_speech,
     transcribe_audio,
     translate_text,
 )
@@ -311,3 +312,94 @@ def test_transcribe_audio_calls_model_transcribe_once() -> None:
     transcribe_audio(audio, "English", mock_model)
 
     assert mock_model.transcribe.call_count == 1
+
+
+# -- detect_speech -------------------------------------------------------------
+
+
+@patch("vad.vad_probabilities")
+def test_detect_speech_no_speech_returns_none(mock_probs: MagicMock) -> None:
+    mock_probs.return_value = np.array([0.1, 0.1, 0.1], dtype=np.float32)
+    audio = np.zeros(16000, dtype=np.float32)
+
+    result = detect_speech(audio, vad_model={})
+
+    assert result is None
+
+
+@patch("vad.vad_probabilities")
+def test_detect_speech_returns_range_for_continuous_speech(
+    mock_probs: MagicMock,
+) -> None:
+    mock_probs.return_value = np.array([0.9, 0.9, 0.9], dtype=np.float32)
+    # 3 windows × 256 ms = 768 ms total audio
+    audio = np.zeros(int(0.768 * 16000), dtype=np.float32)
+
+    result = detect_speech(audio, vad_model={})
+
+    assert result is not None
+    start_sec, end_sec = result
+    # First window starts at 0, padding clamps start to 0
+    assert start_sec == 0.0
+    # Last window ends at 0.768; with +200 ms pad → 0.968, but clamps to 0.768
+    assert end_sec == 0.768
+
+
+@patch("vad.vad_probabilities")
+def test_detect_speech_returns_range_for_partial_speech(
+    mock_probs: MagicMock,
+) -> None:
+    # Speech in middle two of four windows
+    mock_probs.return_value = np.array([0.1, 0.9, 0.9, 0.1], dtype=np.float32)
+    audio = np.zeros(int(1.024 * 16000), dtype=np.float32)
+
+    result = detect_speech(audio, vad_model={})
+
+    assert result is not None
+    start_sec, end_sec = result
+    # First speech window starts at index 1 → 0.256 s; pad −200 ms → 0.056
+    assert abs(start_sec - 0.056) < 1e-6
+    # Last speech window ends at index 3 → 0.768 s; pad +200 ms → 0.968
+    assert abs(end_sec - 0.968) < 1e-6
+
+
+@patch("vad.vad_probabilities")
+def test_detect_speech_applies_padding(mock_probs: MagicMock) -> None:
+    # One speech window in the middle, ample audio around
+    mock_probs.return_value = np.array([0.1, 0.1, 0.9, 0.1, 0.1], dtype=np.float32)
+    audio = np.zeros(int(1.28 * 16000), dtype=np.float32)
+
+    result = detect_speech(audio, vad_model={}, pad_seconds=0.1)
+
+    assert result is not None
+    start_sec, end_sec = result
+    # Window 2 starts at 0.512 s; pad −0.1 → 0.412
+    assert abs(start_sec - 0.412) < 1e-6
+    # Window 2 ends at 0.768 s; pad +0.1 → 0.868
+    assert abs(end_sec - 0.868) < 1e-6
+
+
+@patch("vad.vad_probabilities")
+def test_detect_speech_clamps_to_audio_bounds(mock_probs: MagicMock) -> None:
+    # Speech in first AND last window; padding would extend past bounds
+    mock_probs.return_value = np.array([0.9, 0.1, 0.1, 0.9], dtype=np.float32)
+    total_dur_sec = 1.024
+    audio = np.zeros(int(total_dur_sec * 16000), dtype=np.float32)
+
+    result = detect_speech(audio, vad_model={}, pad_seconds=0.5)
+
+    assert result is not None
+    start_sec, end_sec = result
+    assert start_sec == 0.0
+    assert end_sec == total_dur_sec
+
+
+@patch("vad.vad_probabilities")
+def test_detect_speech_too_short_audio_returns_none(mock_probs: MagicMock) -> None:
+    # vad_probabilities returns empty array for audio with no full block
+    mock_probs.return_value = np.zeros(0, dtype=np.float32)
+    audio = np.zeros(100, dtype=np.float32)  # well under 4096 samples
+
+    result = detect_speech(audio, vad_model={})
+
+    assert result is None

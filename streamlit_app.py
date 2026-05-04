@@ -33,6 +33,10 @@ ASR_LANGUAGE_CODES: dict[str, str] = {
     "Arabic": "ar",
 }
 
+VAD_MODEL_ID: str = "mlx-community/silero-vad-v6"
+VAD_THRESHOLD: float = 0.5  # standard silero default
+VAD_PAD_SECONDS: float = 0.2  # 200 ms padding around speech to avoid clipping
+
 # -- Languages ---------------------------------------------------------------
 # 67 languages across Europe, West Asia, South Asia, Asia Pacific, and Africa.
 
@@ -183,6 +187,43 @@ def decode_audio(audio_bytes: bytes) -> np.ndarray:
             audio,
         ).astype(np.float32)
     return audio
+
+
+def detect_speech(
+    audio: np.ndarray,
+    vad_model: Any,
+    *,
+    threshold: float = VAD_THRESHOLD,
+    pad_seconds: float = VAD_PAD_SECONDS,
+) -> tuple[float, float] | None:
+    """Run VAD over a 16 kHz mono float32 ndarray.
+
+    Returns (start_sec, end_sec) of the contiguous speech region with padding
+    applied and clamped to audio bounds, or None if no window's probability
+    exceeds threshold (strict greater-than).
+    """
+    import numpy as np
+
+    import vad as vad_module
+
+    probs = vad_module.vad_probabilities(vad_model, audio)
+    if probs.size == 0:
+        return None
+
+    above = probs > threshold
+    if not above.any():
+        return None
+
+    indices = np.flatnonzero(above)
+    first_idx = int(indices[0])
+    last_idx = int(indices[-1])
+    window_sec = 0.256  # one 256 ms block
+    start_sec = first_idx * window_sec - pad_seconds
+    end_sec = (last_idx + 1) * window_sec + pad_seconds
+    total_sec = audio.shape[0] / 16000
+    start_sec = max(0.0, start_sec)
+    end_sec = min(total_sec, end_sec)
+    return (start_sec, end_sec)
 
 
 def transcribe_audio(
