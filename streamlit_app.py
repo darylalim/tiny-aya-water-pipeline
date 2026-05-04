@@ -261,6 +261,19 @@ def load_asr_model() -> Any:
     return CohereAsrModel.from_path(local_dir / ASR_MODEL_SUBDIR)
 
 
+@st.cache_resource
+def load_vad_model() -> Any:
+    """Load the silero-vad-v6 MLX model once, cached for the session lifetime."""
+    from pathlib import Path
+
+    from huggingface_hub import snapshot_download
+
+    from vad import load_vad
+
+    local_dir = Path(snapshot_download(repo_id=VAD_MODEL_ID))
+    return load_vad(local_dir)
+
+
 # -- Main page ----------------------------------------------------------------
 
 st.title("Tiny Aya Global Translate")
@@ -287,6 +300,17 @@ except Exception as e:
     st.error(f"Failed to load ASR model: {e}")
     asr_model = None
     asr_loaded = False
+
+# -- VAD model loading --------------------------------------------------------
+
+try:
+    with st.spinner("Loading VAD model..."):
+        vad_model = load_vad_model()
+    vad_loaded = True
+except Exception as e:
+    st.error(f"Failed to load VAD model: {e}")
+    vad_model = None
+    vad_loaded = False
 
 # -- Session state defaults ---------------------------------------------------
 

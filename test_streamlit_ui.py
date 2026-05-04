@@ -22,6 +22,8 @@ def app() -> AppTest:
             "mlx_speech.generation.CohereAsrModel.from_path",
             return_value=MagicMock(),
         ),
+        patch("vad.load_vad", return_value={}),
+        patch("vad.vad_probabilities", return_value=np.array([0.9, 0.9])),
     ):
         at = AppTest.from_file("streamlit_app.py")
         at.run(timeout=60)
@@ -37,6 +39,8 @@ def _rerun_with_mocks(app: AppTest) -> None:
             "mlx_speech.generation.CohereAsrModel.from_path",
             return_value=MagicMock(),
         ),
+        patch("vad.load_vad", return_value={}),
+        patch("vad.vad_probabilities", return_value=np.array([0.9, 0.9])),
     ):
         app.run(timeout=60)
 
@@ -50,6 +54,8 @@ def _run_inference_test(input_text: str, generate_result: str) -> AppTest:
             "mlx_speech.generation.CohereAsrModel.from_path",
             return_value=MagicMock(),
         ),
+        patch("vad.load_vad", return_value={}),
+        patch("vad.vad_probabilities", return_value=np.array([0.9, 0.9])),
         patch("mlx_lm.generate", return_value=generate_result),
     ):
         at = AppTest.from_file("streamlit_app.py")
@@ -94,6 +100,8 @@ def _drive_transcription(
             "mlx_speech.generation.CohereAsrModel.from_path",
             return_value=fake_model,
         ),
+        patch("vad.load_vad", return_value={}),
+        patch("vad.vad_probabilities", return_value=np.array([0.9, 0.9])),
         patch("soundfile.read", return_value=(fake_audio, 16000)),
     ):
         at = AppTest.from_file("streamlit_app.py")
@@ -131,6 +139,8 @@ def _drive_mic_transcription(
             "mlx_speech.generation.CohereAsrModel.from_path",
             return_value=fake_model,
         ),
+        patch("vad.load_vad", return_value={}),
+        patch("vad.vad_probabilities", return_value=np.array([0.9, 0.9])),
         patch("soundfile.read", return_value=(fake_audio, 16000)),
     ):
         at = AppTest.from_file("streamlit_app.py")
@@ -176,6 +186,8 @@ def test_swap_moves_output_to_input() -> None:
     with (
         patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
         patch("mlx_lm.generate", return_value="Bonjour"),
+        patch("vad.load_vad", return_value={}),
+        patch("vad.vad_probabilities", return_value=np.array([0.9, 0.9])),
     ):
         at = AppTest.from_file("streamlit_app.py")
         at.run(timeout=60)
@@ -302,7 +314,11 @@ def test_output_text_area_disabled(app: AppTest) -> None:
 
 
 def test_model_load_failure_shows_error() -> None:
-    with patch("mlx_lm.load", side_effect=RuntimeError("download failed")):
+    with (
+        patch("mlx_lm.load", side_effect=RuntimeError("download failed")),
+        patch("vad.load_vad", return_value={}),
+        patch("vad.vad_probabilities", return_value=np.array([0.9, 0.9])),
+    ):
         at = AppTest.from_file("streamlit_app.py")
         at.run(timeout=60)
 
@@ -311,7 +327,11 @@ def test_model_load_failure_shows_error() -> None:
 
 
 def test_model_load_failure_disables_translate_button() -> None:
-    with patch("mlx_lm.load", side_effect=RuntimeError("download failed")):
+    with (
+        patch("mlx_lm.load", side_effect=RuntimeError("download failed")),
+        patch("vad.load_vad", return_value={}),
+        patch("vad.vad_probabilities", return_value=np.array([0.9, 0.9])),
+    ):
         at = AppTest.from_file("streamlit_app.py")
         at.run(timeout=60)
 
@@ -335,6 +355,8 @@ def test_asr_model_load_failure_shows_error() -> None:
             "mlx_speech.generation.CohereAsrModel.from_path",
             side_effect=RuntimeError("download failed"),
         ),
+        patch("vad.load_vad", return_value={}),
+        patch("vad.vad_probabilities", return_value=np.array([0.9, 0.9])),
     ):
         at = AppTest.from_file("streamlit_app.py")
         at.run(timeout=60)
@@ -371,6 +393,8 @@ def test_audio_uploader_disabled_when_asr_load_fails() -> None:
             "mlx_speech.generation.CohereAsrModel.from_path",
             side_effect=RuntimeError("download failed"),
         ),
+        patch("vad.load_vad", return_value={}),
+        patch("vad.vad_probabilities", return_value=np.array([0.9, 0.9])),
     ):
         at = AppTest.from_file("streamlit_app.py")
         at.run(timeout=60)
@@ -430,6 +454,8 @@ def test_mic_widget_disabled_when_asr_load_fails() -> None:
             "mlx_speech.generation.CohereAsrModel.from_path",
             side_effect=RuntimeError("download failed"),
         ),
+        patch("vad.load_vad", return_value={}),
+        patch("vad.vad_probabilities", return_value=np.array([0.9, 0.9])),
     ):
         at = AppTest.from_file("streamlit_app.py")
         at.run(timeout=60)
@@ -462,6 +488,8 @@ def test_mic_transcription_failure_shows_warning() -> None:
             "mlx_speech.generation.CohereAsrModel.from_path",
             return_value=fake_model,
         ),
+        patch("vad.load_vad", return_value={}),
+        patch("vad.vad_probabilities", return_value=np.array([0.9, 0.9])),
         patch("soundfile.read", return_value=(fake_audio, 16000)),
     ):
         at = AppTest.from_file("streamlit_app.py")
@@ -509,6 +537,8 @@ def test_transcription_failure_shows_warning() -> None:
             "mlx_speech.generation.CohereAsrModel.from_path",
             return_value=fake_model,
         ),
+        patch("vad.load_vad", return_value={}),
+        patch("vad.vad_probabilities", return_value=np.array([0.9, 0.9])),
         patch("soundfile.read", return_value=(fake_audio, 16000)),
     ):
         at = AppTest.from_file("streamlit_app.py")
@@ -560,6 +590,8 @@ def test_decode_error_shows_specific_warning() -> None:
             "mlx_speech.generation.CohereAsrModel.from_path",
             return_value=MagicMock(),
         ),
+        patch("vad.load_vad", return_value={}),
+        patch("vad.vad_probabilities", return_value=np.array([0.9, 0.9])),
         patch(
             "soundfile.read",
             side_effect=sf.LibsndfileError("Format not recognised"),
@@ -592,6 +624,8 @@ def test_upload_auto_translates() -> None:
             "mlx_speech.generation.CohereAsrModel.from_path",
             return_value=fake_asr,
         ),
+        patch("vad.load_vad", return_value={}),
+        patch("vad.vad_probabilities", return_value=np.array([0.9, 0.9])),
         patch("soundfile.read", return_value=(fake_audio, 16000)),
         patch("mlx_lm.generate", return_value="bonjour"),
     ):
@@ -619,6 +653,8 @@ def test_mic_recording_auto_translates() -> None:
             "mlx_speech.generation.CohereAsrModel.from_path",
             return_value=fake_asr,
         ),
+        patch("vad.load_vad", return_value={}),
+        patch("vad.vad_probabilities", return_value=np.array([0.9, 0.9])),
         patch("soundfile.read", return_value=(fake_audio, 16000)),
         patch("mlx_lm.generate", return_value="bonjour"),
     ):
@@ -648,6 +684,8 @@ def test_auto_translate_skipped_when_translation_model_not_loaded() -> None:
             "mlx_speech.generation.CohereAsrModel.from_path",
             return_value=fake_asr,
         ),
+        patch("vad.load_vad", return_value={}),
+        patch("vad.vad_probabilities", return_value=np.array([0.9, 0.9])),
         patch("soundfile.read", return_value=(fake_audio, 16000)),
     ):
         at = AppTest.from_file("streamlit_app.py")
