@@ -16,7 +16,7 @@ Translate text and voice across 67 languages — all running privately on your M
 ## Prerequisites
 
 - Apple Silicon Mac
-- 16 GB+ RAM recommended (two MLX models load to ~6 GB)
+- 16 GB+ RAM recommended (three MLX models load to ~6 GB)
 - Python 3.13+
 - [uv](https://docs.astral.sh/uv/)
 
@@ -32,7 +32,7 @@ uv sync
 uv run streamlit run streamlit_app.py
 ```
 
-First run downloads two models: tiny-aya-global (~1.7 GB) and Cohere Transcribe (~4.1 GB). Voice recording uses your browser's microphone — you'll be asked to grant permission on first use. To tune the models or sampling parameters, edit the constants at the top of `streamlit_app.py`.
+First run downloads three models: tiny-aya-global (~1.7 GB), Cohere Transcribe (~4.1 GB), and Silero VAD v6 (~1.5 MB). Voice recording uses your browser's microphone — you'll be asked to grant permission on first use. To tune the models or sampling parameters, edit the constants at the top of `streamlit_app.py`.
 
 ## Development
 
@@ -45,9 +45,10 @@ uv run ty check streamlit_app.py                             # type check
 
 ## License
 
-This app bundles two models:
+This app bundles three models:
 
 - tiny-aya-global — [CC-BY-NC](https://cohere.com/c4ai-cc-by-nc-license) (non-commercial only)
 - Cohere Transcribe — [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+- Silero VAD v6 — [MIT](https://opensource.org/licenses/MIT)
 
 The combined product is non-commercial because of the tiny-aya-global license.

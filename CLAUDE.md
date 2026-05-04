@@ -28,7 +28,7 @@ uv run ty check streamlit_app.py                             # type check
 ## Conventions
 
 - Pure functions are defined above `import streamlit` with deferred imports for heavy deps (`mlx_lm`, `mlx_speech`) inside their bodies, so tests can patch upstream libraries without loading the model stack
-- Config is hardcoded as module-level constants (`MODEL_ID`, `ASR_MODEL_ID`, `ASR_MODEL_SUBDIR`, `ASR_LANGUAGE_CODES`, `DEFAULT_TEMPERATURE`, `DEFAULT_MAX_TOKENS`, `TOP_P`) at the top of `streamlit_app.py`
+- Config is hardcoded as module-level constants (`MODEL_ID`, `ASR_MODEL_ID`, `ASR_MODEL_SUBDIR`, `ASR_LANGUAGE_CODES`, `DEFAULT_TEMPERATURE`, `DEFAULT_MAX_TOKENS`, `TOP_P`, `VAD_MODEL_ID`, `VAD_THRESHOLD`, `VAD_PAD_SECONDS`) at the top of `streamlit_app.py`
 - Language selectboxes use the flat `LANGUAGES` list (67 items) with collapsed labels and Streamlit's built-in type-to-search
 - Swap button (`:material/swap_horiz:`, `type="tertiary"`, `help=` tooltip) flips languages via `st.session_state` and moves output into input
 - Audio inputs are `st.columns(2)`: `st.audio_input` (mic, left) and `st.file_uploader` (right), between the language bar and the warning slot; both widgets share `uploader_disabled` / `uploader_help`
@@ -47,8 +47,9 @@ uv run ty check streamlit_app.py                             # type check
 - Audio pipeline is three pure functions: `decode_audio(bytes) -> ndarray`, `detect_speech(ndarray, vad_model) -> (start_sec, end_sec) | None`, `transcribe_audio(ndarray, lang, asr_model) -> str`. Decoding is shared upstream of both VAD and ASR
 - VAD load failure is graceful degradation, not a gate — audio inputs stay enabled and transcription proceeds without trimming or empty-recording rejection. The `vad_loaded` flag controls whether the VAD branch runs in the transcription block
 - `translate_text` builds a chat prompt, applies the tokenizer chat template, samples via `make_sampler(temp=, top_p=)`, and generates with `mlx_lm.generate`
-- `transcribe_audio` accepts raw bytes (not Streamlit's `UploadedFile`) so it's trivially mockable; decodes via `soundfile`, downmixes stereo with `mean(axis=1)`, and resamples to 16 kHz with `numpy.interp`
+- `decode_audio` accepts raw bytes (not Streamlit's `UploadedFile`) so it's trivially mockable; decodes via `soundfile`, downmixes stereo with `mean(axis=1)`, and resamples to 16 kHz with `numpy.interp`. Returns a mono float32 ndarray that both `detect_speech` and `transcribe_audio` consume
+- `transcribe_audio` takes the decoded ndarray directly (decoupled from upload handling) and calls the ASR model's `transcribe(audio=, sample_rate=16000, language=)`
 - `clean_model_output` strips whitespace and the `<|END_RESPONSE|>` token leaked by the model
 - UI tests use `streamlit.testing.v1.AppTest`; mocks target upstream libraries (`mlx_lm`, `mlx_speech`, `huggingface_hub`, `soundfile`) because AppTest runs scripts via `exec()`; widgets without named accessors (audio input, file uploader, download button) are accessed via `at.get(...)[0]`
 - UI tests drive transcription via `_drive_transcription` (sets `audio_file` + `_transcribe_source = "upload"`) or `_drive_mic_transcription` (sets `mic_input` + `_transcribe_source = "mic"`), then call `at.run(...)` — AppTest has no public API for either widget's value setter
-- The app bundles two models: `mlx-community/tiny-aya-global-8bit-mlx` (translation, CC-BY-NC, non-commercial only) and `mlx-community/cohere-transcribe-03-2026-mlx-8bit` (ASR, Apache 2.0); the combined product is non-commercial
+- The app bundles three models: `mlx-community/tiny-aya-global-8bit-mlx` (translation, CC-BY-NC, non-commercial only), `mlx-community/cohere-transcribe-03-2026-mlx-8bit` (ASR, Apache 2.0), and `mlx-community/silero-vad-v6` (VAD, MIT); the combined product is non-commercial because of the translation model
