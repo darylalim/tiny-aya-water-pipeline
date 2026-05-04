@@ -8,10 +8,12 @@ Streamlit app for translating text across 67 languages using `mlx-community/tiny
 - Streamlit for UI
 - mlx-lm for translation inference on Apple Silicon
 - mlx-speech for ASR (Cohere Transcribe) inference on Apple Silicon
+- mlx for VAD inference (Silero VAD v6) on Apple Silicon
 
 ## Structure
 
 - `streamlit_app.py` — main app: config, pure functions, Streamlit UI
+- `vad.py` — vendored MLX forward pass for Silero VAD v6 (silence detection)
 - `test_streamlit_app.py` — pytest unit tests for pure functions
 - `test_streamlit_ui.py` — pytest UI tests for Streamlit interface
 
@@ -22,7 +24,7 @@ uv run streamlit run streamlit_app.py                        # run the app
 uv run pytest test_streamlit_app.py test_streamlit_ui.py -v  # run tests
 uv run ruff check --fix .                                    # lint
 uv run ruff format .                                         # format
-uv run ty check streamlit_app.py                             # type check
+uv run ty check streamlit_app.py vad.py                      # type check
 ```
 
 ## Conventions

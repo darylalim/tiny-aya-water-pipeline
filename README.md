@@ -40,7 +40,7 @@ First run downloads three models: tiny-aya-global (~1.7 GB), Cohere Transcribe (
 uv run pytest test_streamlit_app.py test_streamlit_ui.py -v  # run tests
 uv run ruff check --fix .                                    # lint
 uv run ruff format .                                         # format
-uv run ty check streamlit_app.py                             # type check
+uv run ty check streamlit_app.py vad.py                      # type check
 ```
 
 ## License
