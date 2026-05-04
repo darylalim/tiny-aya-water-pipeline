@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import soundfile as sf
+
+if TYPE_CHECKING:
+    import numpy as np
 
 # -- Config ------------------------------------------------------------------
 
@@ -160,12 +163,8 @@ def translate_text(
     return clean_model_output(result)
 
 
-def transcribe_audio(
-    audio_bytes: bytes,
-    language: str,
-    model: Any,
-) -> str:
-    """Decode audio bytes → mono 16 kHz float32 → transcribe → cleaned text."""
+def decode_audio(audio_bytes: bytes) -> np.ndarray:
+    """Decode arbitrary audio bytes -> mono 16 kHz float32 ndarray."""
     import io
 
     import numpy as np
@@ -183,8 +182,17 @@ def transcribe_audio(
             np.arange(old_len),
             audio,
         ).astype(np.float32)
+    return audio
+
+
+def transcribe_audio(
+    audio: np.ndarray,
+    language: str,
+    asr_model: Any,
+) -> str:
+    """Transcribe a 16 kHz mono float32 ndarray and return cleaned text."""
     lang_code = ASR_LANGUAGE_CODES[language]
-    result = model.transcribe(audio=audio, sample_rate=16000, language=lang_code)
+    result = asr_model.transcribe(audio=audio, sample_rate=16000, language=lang_code)
     return result.text.strip()
 
 
@@ -374,8 +382,9 @@ if st.session_state._do_transcribe:
     else:
         try:
             with st.spinner("Transcribing..."):
+                audio_array = decode_audio(audio.getvalue())
                 transcript = transcribe_audio(
-                    audio.getvalue(),
+                    audio_array,
                     st.session_state.source_lang,
                     asr_model,
                 )
