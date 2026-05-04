@@ -366,7 +366,7 @@ def test_detect_speech_returns_range_for_continuous_speech(
     # First window starts at 0, padding clamps start to 0
     assert start_sec == 0.0
     # Last window ends at 0.768; with +200 ms pad → 0.968, but clamps to 0.768
-    assert end_sec == 0.768
+    assert abs(end_sec - 0.768) < 1e-6
 
 
 @patch("vad.vad_probabilities")
@@ -415,7 +415,7 @@ def test_detect_speech_clamps_to_audio_bounds(mock_probs: MagicMock) -> None:
     assert result is not None
     start_sec, end_sec = result
     assert start_sec == 0.0
-    assert end_sec == total_dur_sec
+    assert abs(end_sec - total_dur_sec) < 1e-6
 
 
 @patch("vad.vad_probabilities")
@@ -427,3 +427,13 @@ def test_detect_speech_too_short_audio_returns_none(mock_probs: MagicMock) -> No
     result = detect_speech(audio, vad_model={})
 
     assert result is None
+
+
+@patch("vad.vad_probabilities")
+def test_detect_speech_custom_threshold(mock_probs: MagicMock) -> None:
+    # Both windows at 0.4 — below default 0.5 (None) but above custom 0.3 (range)
+    mock_probs.return_value = np.array([0.4, 0.4], dtype=np.float32)
+    audio = np.zeros(int(0.512 * 16000), dtype=np.float32)
+
+    assert detect_speech(audio, vad_model={}) is None
+    assert detect_speech(audio, vad_model={}, threshold=0.3) is not None
