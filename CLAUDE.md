@@ -29,8 +29,8 @@ uv run ty check streamlit_app.py vad.py                      # type check
 
 ## Conventions
 
-- Pure functions are defined above `import streamlit` with deferred imports for heavy deps (`mlx_lm`, `mlx_speech`) inside their bodies, so tests can patch upstream libraries without loading the model stack
-- Config is hardcoded as module-level constants (`MODEL_ID`, `ASR_MODEL_ID`, `ASR_MODEL_SUBDIR`, `ASR_LANGUAGE_CODES`, `DEFAULT_TEMPERATURE`, `DEFAULT_MAX_TOKENS`, `TOP_P`, `VAD_MODEL_ID`, `VAD_THRESHOLD`, `VAD_PAD_SECONDS`) at the top of `streamlit_app.py`
+- Pure functions are defined above `import streamlit` with deferred imports for upstream libs (`mlx_lm`, `mlx_speech`, `vad`) inside their bodies, so tests can patch them without loading the model stack
+- Config is hardcoded as module-level constants (`MODEL_ID`, `SAMPLE_RATE`, `ASR_MODEL_ID`, `ASR_MODEL_SUBDIR`, `ASR_LANGUAGE_CODES`, `DEFAULT_TEMPERATURE`, `DEFAULT_MAX_TOKENS`, `TOP_P`, `VAD_MODEL_ID`, `VAD_THRESHOLD`, `VAD_PAD_SECONDS`) at the top of `streamlit_app.py`
 - Language selectboxes use the flat `LANGUAGES` list (67 items) with collapsed labels and Streamlit's built-in type-to-search
 - Swap button (`:material/swap_horiz:`, `type="tertiary"`, `help=` tooltip) flips languages via `st.session_state` and moves output into input
 - Audio inputs are `st.columns(2)`: `st.audio_input` (mic, left) and `st.file_uploader` (right), between the language bar and the warning slot; both widgets share `uploader_disabled` / `uploader_help`
