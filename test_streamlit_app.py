@@ -8,6 +8,9 @@ from streamlit_app import (
     ASR_MODEL_ID,
     ASR_MODEL_SUBDIR,
     LANGUAGES,
+    VAD_MODEL_ID,
+    VAD_PAD_SECONDS,
+    VAD_THRESHOLD,
     build_translation_prompt,
     clean_model_output,
     decode_audio,
@@ -228,6 +231,27 @@ def test_asr_language_codes_chinese_maps_to_zh() -> None:
 
 def test_asr_language_codes_arabic_maps_to_ar() -> None:
     assert ASR_LANGUAGE_CODES["Arabic"] == "ar"
+
+
+# -- VAD_MODEL_ID --------------------------------------------------------------
+
+
+def test_vad_model_id_is_silero_v6_repo() -> None:
+    assert VAD_MODEL_ID == "mlx-community/silero-vad-v6"
+
+
+# -- VAD_THRESHOLD -------------------------------------------------------------
+
+
+def test_vad_threshold_is_default_0_5() -> None:
+    assert VAD_THRESHOLD == 0.5
+
+
+# -- VAD_PAD_SECONDS -----------------------------------------------------------
+
+
+def test_vad_pad_seconds_is_200ms() -> None:
+    assert VAD_PAD_SECONDS == 0.2
 
 
 # -- decode_audio --------------------------------------------------------------
