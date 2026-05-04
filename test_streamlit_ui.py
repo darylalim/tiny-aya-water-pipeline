@@ -697,3 +697,175 @@ def test_auto_translate_skipped_when_translation_model_not_loaded() -> None:
 
     assert at.text_area[0].value == "hello"
     assert at.text_area[1].value == ""
+
+
+# -- VAD: no-speech behavior --------------------------------------------------
+
+
+def test_no_speech_detected_shows_warning() -> None:
+    fake_asr = MagicMock()
+    fake_audio = np.zeros(16000, dtype=np.float32)
+
+    with (
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            return_value=fake_asr,
+        ),
+        patch("soundfile.read", return_value=(fake_audio, 16000)),
+        patch("vad.load_vad", return_value={}),
+        patch("vad.vad_probabilities", return_value=np.array([0.1, 0.1])),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+        at.session_state.audio_file = _FakeUploadedFile(b"<bytes>")
+        at.session_state._do_transcribe = True
+        at.session_state._transcribe_source = "upload"
+        at.run(timeout=60)
+
+    warning_values = [str(w.value) for w in at.warning]
+    assert any("No speech detected" in v for v in warning_values)
+
+
+def test_no_speech_does_not_populate_input() -> None:
+    fake_asr = MagicMock()
+    fake_audio = np.zeros(16000, dtype=np.float32)
+
+    with (
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            return_value=fake_asr,
+        ),
+        patch("soundfile.read", return_value=(fake_audio, 16000)),
+        patch("vad.load_vad", return_value={}),
+        patch("vad.vad_probabilities", return_value=np.array([0.1, 0.1])),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+        at.session_state.audio_file = _FakeUploadedFile(b"<bytes>")
+        at.session_state._do_transcribe = True
+        at.session_state._transcribe_source = "upload"
+        at.run(timeout=60)
+
+    assert at.text_area[0].value == ""
+
+
+def test_no_speech_does_not_auto_translate() -> None:
+    fake_asr = MagicMock()
+    fake_audio = np.zeros(16000, dtype=np.float32)
+
+    with (
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            return_value=fake_asr,
+        ),
+        patch("soundfile.read", return_value=(fake_audio, 16000)),
+        patch("vad.load_vad", return_value={}),
+        patch("vad.vad_probabilities", return_value=np.array([0.1, 0.1])),
+        patch("mlx_lm.generate", return_value="should not be called"),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+        at.session_state.audio_file = _FakeUploadedFile(b"<bytes>")
+        at.session_state._do_transcribe = True
+        at.session_state._transcribe_source = "upload"
+        at.run(timeout=60)
+
+    assert at.text_area[1].value == ""
+
+
+def test_no_speech_preserves_existing_input() -> None:
+    fake_asr = MagicMock()
+    fake_audio = np.zeros(16000, dtype=np.float32)
+
+    with (
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            return_value=fake_asr,
+        ),
+        patch("soundfile.read", return_value=(fake_audio, 16000)),
+        patch("vad.load_vad", return_value={}),
+        patch("vad.vad_probabilities", return_value=np.array([0.1, 0.1])),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+        at.text_area[0].set_value("earlier text")
+        at.run(timeout=60)
+        at.session_state.audio_file = _FakeUploadedFile(b"<bytes>")
+        at.session_state._do_transcribe = True
+        at.session_state._transcribe_source = "upload"
+        at.run(timeout=60)
+
+    assert at.text_area[0].value == "earlier text"
+
+
+# -- VAD: load failure --------------------------------------------------------
+
+
+def test_vad_load_failure_shows_error() -> None:
+    with (
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            return_value=MagicMock(),
+        ),
+        patch("vad.load_vad", side_effect=RuntimeError("vad download failed")),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+
+    error_values = [str(e.value) for e in at.error]
+    assert any("Failed to load VAD model" in v for v in error_values)
+
+
+def test_vad_load_failure_does_not_disable_audio_inputs() -> None:
+    with (
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            return_value=MagicMock(),
+        ),
+        patch("vad.load_vad", side_effect=RuntimeError("vad download failed")),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+
+    # Default source language is English (supported by ASR), and ASR loaded fine.
+    # VAD failure must NOT cascade into disabling the audio widgets.
+    assert not at.get("audio_input")[0].disabled
+    assert not at.get("file_uploader")[0].disabled
+
+
+def test_vad_load_failure_still_transcribes() -> None:
+    fake_asr = MagicMock()
+    fake_asr.transcribe.return_value = MagicMock(text="hello")
+    fake_audio = np.zeros(16000, dtype=np.float32)
+
+    with (
+        patch("mlx_lm.load", return_value=(MagicMock(), MagicMock())),
+        patch("huggingface_hub.snapshot_download", return_value="/fake/path"),
+        patch(
+            "mlx_speech.generation.CohereAsrModel.from_path",
+            return_value=fake_asr,
+        ),
+        patch("soundfile.read", return_value=(fake_audio, 16000)),
+        patch("vad.load_vad", side_effect=RuntimeError("vad download failed")),
+    ):
+        at = AppTest.from_file("streamlit_app.py")
+        at.run(timeout=60)
+        at.session_state.audio_file = _FakeUploadedFile(b"<bytes>")
+        at.session_state._do_transcribe = True
+        at.session_state._transcribe_source = "upload"
+        at.run(timeout=60)
+
+    # Graceful degradation: ASR runs, transcript fills input, no VAD trim.
+    assert at.text_area[0].value == "hello"
