@@ -1212,6 +1212,7 @@ dependencies = [
     { name = "mlx-lm" },
     { name = "mlx-speech" },
     { name = "numpy" },
+    { name = "safetensors" },
     { name = "soundfile" },
     { name = "streamlit" },
 ]
@@ -1228,6 +1229,7 @@ requires-dist = [
     { name = "mlx-lm", specifier = ">=0.28.0" },
     { name = "mlx-speech", specifier = ">=0.4.0" },
     { name = "numpy" },
+    { name = "safetensors", specifier = ">=0.4.0" },
     { name = "soundfile" },
     { name = "streamlit", specifier = ">=1.55.0" },
 ]
