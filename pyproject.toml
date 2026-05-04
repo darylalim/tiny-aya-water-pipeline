@@ -1,7 +1,7 @@
 [project]
 name = "tiny-aya-global-translate"
-version = "0.1.0"
-description = "Translate text and transcribe audio on Apple Silicon with local MLX inference"
+version = "0.2.0"
+description = "Translate text and audio on Apple Silicon with local MLX inference"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
