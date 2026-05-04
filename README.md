@@ -1,12 +1,13 @@
 # Tiny Aya Global Translate
 
-Translate text across 67 languages — all running privately on your Mac. Powered by [mlx-community/tiny-aya-global-8bit-mlx](https://huggingface.co/mlx-community/tiny-aya-global-8bit-mlx).
+Translate text and voice across 67 languages — all running privately on your Mac. Powered by [mlx-community/tiny-aya-global-8bit-mlx](https://huggingface.co/mlx-community/tiny-aya-global-8bit-mlx) and [Cohere Transcribe](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026).
 
 ## Features
 
 - Side-by-side text translation
 - Swap and download controls
-- Audio file upload with on-device transcription in 14 languages via [Cohere Transcribe](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026)
+- Voice translation: record from mic or upload an audio file
+- Auto-transcribed in 14 source languages via [Cohere Transcribe](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026) and auto-translated
 - 67 languages across Europe, West Asia, South Asia, Asia Pacific, and Africa
 - 8-bit quantized MLX inference on Apple Silicon
 - Local inference — no API key required
@@ -30,7 +31,7 @@ uv sync
 uv run streamlit run streamlit_app.py
 ```
 
-First run downloads two models: tiny-aya-global (~1.7 GB) and Cohere Transcribe (~4.1 GB). To tune the models or sampling parameters, edit the constants at the top of `streamlit_app.py`.
+First run downloads two models: tiny-aya-global (~1.7 GB) and Cohere Transcribe (~4.1 GB). Voice recording uses your browser's microphone — you'll be asked to grant permission on first use. To tune the models or sampling parameters, edit the constants at the top of `streamlit_app.py`.
 
 ## Development
 
