@@ -14,6 +14,9 @@ DEFAULT_TEMPERATURE: float = 0.1
 DEFAULT_MAX_TOKENS: int = 700
 TOP_P: float = 0.95
 
+# Audio pipeline sample rate; must match vad.SAMPLE_RATE (silero-vad-v6 is 16 kHz only)
+SAMPLE_RATE: int = 16000
+
 ASR_MODEL_ID: str = "mlx-community/cohere-transcribe-03-2026-mlx-8bit"
 ASR_MODEL_SUBDIR: str = "mlx-int8"  # quantization subfolder within the HF repo
 ASR_LANGUAGE_CODES: dict[str, str] = {
@@ -178,9 +181,9 @@ def decode_audio(audio_bytes: bytes) -> np.ndarray:
     )
     if audio.ndim > 1:
         audio = audio.mean(axis=1)
-    if sample_rate != 16000:
+    if sample_rate != SAMPLE_RATE:
         old_len = len(audio)
-        new_len = int(round(old_len * 16000 / sample_rate))
+        new_len = int(round(old_len * SAMPLE_RATE / sample_rate))
         audio = np.interp(
             np.linspace(0, old_len - 1, new_len),
             np.arange(old_len),
@@ -217,10 +220,10 @@ def detect_speech(
     indices = np.flatnonzero(above)
     first_idx = int(indices[0])
     last_idx = int(indices[-1])
-    window_sec = 0.256  # one 256 ms block
+    window_sec = vad_module.BLOCK_TOTAL / SAMPLE_RATE  # 256 ms at 16 kHz
     start_sec = first_idx * window_sec - pad_seconds
     end_sec = (last_idx + 1) * window_sec + pad_seconds
-    total_sec = audio.shape[0] / 16000
+    total_sec = audio.shape[0] / SAMPLE_RATE
     start_sec = max(0.0, start_sec)
     end_sec = min(total_sec, end_sec)
     return (start_sec, end_sec)
@@ -233,7 +236,9 @@ def transcribe_audio(
 ) -> str:
     """Transcribe a 16 kHz mono float32 ndarray and return cleaned text."""
     lang_code = ASR_LANGUAGE_CODES[language]
-    result = asr_model.transcribe(audio=audio, sample_rate=16000, language=lang_code)
+    result = asr_model.transcribe(
+        audio=audio, sample_rate=SAMPLE_RATE, language=lang_code
+    )
     return result.text.strip()
 
 
@@ -449,22 +454,18 @@ if st.session_state._do_transcribe:
         try:
             with st.spinner("Transcribing..."):
                 audio_array = decode_audio(audio.getvalue())
+                should_transcribe = True
                 if vad_loaded:
                     speech_range = detect_speech(audio_array, vad_model)
                     if speech_range is None:
                         warning_slot.warning("No speech detected. Try recording again.")
+                        should_transcribe = False
                     else:
                         start_sec, end_sec = speech_range
-                        sr = 16000
                         audio_array = audio_array[
-                            int(start_sec * sr) : int(end_sec * sr)
+                            int(start_sec * SAMPLE_RATE) : int(end_sec * SAMPLE_RATE)
                         ]
-                        transcript = transcribe_audio(
-                            audio_array,
-                            st.session_state.source_lang,
-                            asr_model,
-                        )
-                else:
+                if should_transcribe:
                     transcript = transcribe_audio(
                         audio_array,
                         st.session_state.source_lang,
