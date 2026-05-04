@@ -43,6 +43,9 @@ uv run ty check streamlit_app.py                             # type check
 - `ASR_LANGUAGE_CODES` is the single source of truth for which 14 of the 67 `LANGUAGES` support audio input; unsupported source languages disable both audio widgets and show an `st.info` banner explaining why
 - Translation model loads via `@st.cache_resource def load_model()` using `mlx_lm.load`
 - ASR model loads via `@st.cache_resource def load_asr_model()`, which calls `huggingface_hub.snapshot_download(repo_id=ASR_MODEL_ID)` then passes `local_dir / ASR_MODEL_SUBDIR` (`"mlx-int8"`) to `CohereAsrModel.from_path` — `from_path` expects a literal directory containing `config.json`, not an HF repo id
+- VAD model loads via `@st.cache_resource def load_vad_model()`, which calls `huggingface_hub.snapshot_download(repo_id=VAD_MODEL_ID)` then passes the resulting directory to `vad.load_vad`. Returns a flat `dict[str, mx.array]` weight dict — there is no model object/class
+- Audio pipeline is three pure functions: `decode_audio(bytes) -> ndarray`, `detect_speech(ndarray, vad_model) -> (start_sec, end_sec) | None`, `transcribe_audio(ndarray, lang, asr_model) -> str`. Decoding is shared upstream of both VAD and ASR
+- VAD load failure is graceful degradation, not a gate — audio inputs stay enabled and transcription proceeds without trimming or empty-recording rejection. The `vad_loaded` flag controls whether the VAD branch runs in the transcription block
 - `translate_text` builds a chat prompt, applies the tokenizer chat template, samples via `make_sampler(temp=, top_p=)`, and generates with `mlx_lm.generate`
 - `transcribe_audio` accepts raw bytes (not Streamlit's `UploadedFile`) so it's trivially mockable; decodes via `soundfile`, downmixes stereo with `mean(axis=1)`, and resamples to 16 kHz with `numpy.interp`
 - `clean_model_output` strips whitespace and the `<|END_RESPONSE|>` token leaked by the model

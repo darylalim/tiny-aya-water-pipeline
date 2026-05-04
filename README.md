@@ -8,6 +8,7 @@ Translate text and voice across 67 languages — all running privately on your M
 - Swap and download controls
 - Voice translation: record from mic or upload an audio file
 - Auto-transcribed in 14 source languages via [Cohere Transcribe](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026) and auto-translated
+- Silent recordings are skipped and surrounding silence is trimmed via [Silero VAD v6](https://huggingface.co/mlx-community/silero-vad-v6) before transcription
 - 67 languages across Europe, West Asia, South Asia, Asia Pacific, and Africa
 - 8-bit quantized MLX inference on Apple Silicon
 - Local inference — no API key required
