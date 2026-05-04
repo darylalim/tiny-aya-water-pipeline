@@ -445,22 +445,40 @@ if st.session_state._do_transcribe:
     elif st.session_state.source_lang not in ASR_LANGUAGE_CODES:
         warning_slot.warning("Audio language not supported.")
     else:
+        transcript: str | None = None
         try:
             with st.spinner("Transcribing..."):
                 audio_array = decode_audio(audio.getvalue())
-                transcript = transcribe_audio(
-                    audio_array,
-                    st.session_state.source_lang,
-                    asr_model,
-                )
+                if vad_loaded:
+                    speech_range = detect_speech(audio_array, vad_model)
+                    if speech_range is None:
+                        warning_slot.warning("No speech detected. Try recording again.")
+                    else:
+                        start_sec, end_sec = speech_range
+                        sr = 16000
+                        audio_array = audio_array[
+                            int(start_sec * sr) : int(end_sec * sr)
+                        ]
+                        transcript = transcribe_audio(
+                            audio_array,
+                            st.session_state.source_lang,
+                            asr_model,
+                        )
+                else:
+                    transcript = transcribe_audio(
+                        audio_array,
+                        st.session_state.source_lang,
+                        asr_model,
+                    )
         except sf.LibsndfileError:
             warning_slot.error("Could not decode audio. Try WAV/FLAC if MP3 fails.")
         except Exception as e:
             warning_slot.error(f"Transcription failed: {e}")
         else:
-            st.session_state.translate_input = transcript
-            if model_loaded:
-                st.session_state._do_translate = True
+            if transcript is not None:
+                st.session_state.translate_input = transcript
+                if model_loaded:
+                    st.session_state._do_translate = True
 
 # -- Side-by-side text panels ------------------------------------------------
 
