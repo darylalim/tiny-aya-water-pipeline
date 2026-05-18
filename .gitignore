@@ -25,9 +25,3 @@ __pycache__/
 
 # Streamlit
 .streamlit/
-
-# Superpowers-generated plans/specs
-docs/
-
-# Local test audio fixtures
-test-audio/

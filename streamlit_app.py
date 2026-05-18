@@ -105,7 +105,7 @@ def build_translation_prompt(
 
 
 def clean_model_output(decoded_text: str) -> str:
-    """Clean up decoded model output."""
+    """Strip the ``<|END_RESPONSE|>`` end-of-turn marker and surrounding whitespace."""
     return decoded_text.replace("<|END_RESPONSE|>", "").strip()
 
 
@@ -202,7 +202,7 @@ def swap_languages() -> None:
 
 col_from, col_swap, col_to = st.columns([10, 1, 10], vertical_alignment="center")
 with col_from:
-    source_lang = st.selectbox(
+    st.selectbox(
         "From",
         LANGUAGES,
         key="source_lang",
@@ -219,7 +219,7 @@ with col_swap:
         help="Swap languages",
     )
 with col_to:
-    target_lang = st.selectbox(
+    st.selectbox(
         "To",
         LANGUAGES,
         key="target_lang",
