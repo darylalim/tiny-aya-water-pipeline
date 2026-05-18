@@ -1,5 +1,5 @@
 [project]
-name = "tiny-aya-global-translate"
+name = "tiny-aya-global-pipeline"
 version = "0.3.0"
 description = "Translate text and audio on Apple Silicon with local MLX inference"
 readme = "README.md"

@@ -281,7 +281,7 @@ def load_vad_model() -> Any:
 
 # -- Main page ----------------------------------------------------------------
 
-st.title("Tiny Aya Global Translate")
+st.title("Tiny Aya Global Pipeline")
 
 
 # -- Model loading ------------------------------------------------------------

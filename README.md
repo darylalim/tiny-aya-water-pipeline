@@ -1,4 +1,4 @@
-# Tiny Aya Global Translate
+# Tiny Aya Global Pipeline
 
 Translate text and voice across 67 languages — all running privately on your Mac. Powered by [mlx-community/tiny-aya-global-8bit-mlx](https://huggingface.co/mlx-community/tiny-aya-global-8bit-mlx) and [Cohere Transcribe](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026).
 
